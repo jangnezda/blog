@@ -1,0 +1,57 @@
+baseURL = "http://example.org/"
+languageCode = "en-us"
+title = "Blog, me, myself and moa"
+theme = "Hermit"
+
+pygmentsCodefences = true
+pygmentsUseClasses = true
+
+rssLimit = 10
+
+[author]
+  name = "Jan Gnezda"
+
+[blackfriday]
+  hrefTargetBlank = true
+
+[taxonomies]
+  tag = "tags"
+  category = ""  # Categories are disabled by default.
+
+[params]
+  dateform        = "Jan 2, 2006"
+  dateformShort   = "Jan 2"
+  dateformNum     = "01/02/2006"
+  dateformNumTime = "01/02/2006 15:04 +0100"
+
+  # Metadata mostly used in document's head
+  # description = ""
+  # images = [""]
+  themeColor = "#494f5c"
+
+  homeSubtitle = "A minimal and fast theme for Hugo."
+  # bgImg = ""  # Homepage background-image URL
+
+  # Toggle this option need to rebuild SCSS, requires extended version of Hugo
+  justifyContent = false  # Set "text-align: justify" to .content.
+
+  # Social Icons
+  # Check https://github.com/Track3/hermit#social-icons for more info.
+  [[params.social]]
+    name = "twitter"
+    url = "https://twitter.com/jangnezda"
+
+  [[params.social]]
+    name = "github"
+    url = "https://github.com/jangnezda"
+
+[menu]
+  [[menu.main]]
+    name = "Posts"
+    url = "posts/"
+    weight = 10
+
+  [[menu.main]]
+    name = "About"
+    url = "about-hugo/"
+    weight = 20
