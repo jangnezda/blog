@@ -1,7 +1,7 @@
 baseURL = "http://example.org/"
 languageCode = "en-us"
-title = "Blog, me, myself and moa"
-theme = "Hermit"
+title = "Some of my thoughts"
+theme = "hermit"
 
 pygmentsCodefences = true
 pygmentsUseClasses = true
@@ -22,14 +22,14 @@ rssLimit = 10
   dateform        = "Jan 2, 2006"
   dateformShort   = "Jan 2"
   dateformNum     = "01/02/2006"
-  dateformNumTime = "01/02/2006 15:04 +0100"
+  dateformNumTime = "2. Jan 2006, 15:04"
 
   # Metadata mostly used in document's head
   # description = ""
   # images = [""]
   themeColor = "#494f5c"
 
-  homeSubtitle = "A minimal and fast theme for Hugo."
+  homeSubtitle = "The only way is forward."
   # bgImg = ""  # Homepage background-image URL
 
   # Toggle this option need to rebuild SCSS, requires extended version of Hugo
@@ -51,7 +51,3 @@ rssLimit = 10
     url = "posts/"
     weight = 10
 
-  [[menu.main]]
-    name = "About"
-    url = "about-hugo/"
-    weight = 20

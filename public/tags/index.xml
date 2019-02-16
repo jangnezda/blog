@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Some of my thoughts</title>
+    <link>http://example.org/tags/</link>
+    <description>Recent content in Tags on Some of my thoughts</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 22 Jan 2019 21:26:10 +0100</lastBuildDate>
+    
+	<atom:link href="http://example.org/tags/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>React Native</title>
+      <link>http://example.org/tags/react-native/</link>
+      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
+      
+      <guid>http://example.org/tags/react-native/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Redux</title>
+      <link>http://example.org/tags/redux/</link>
+      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
+      
+      <guid>http://example.org/tags/redux/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Thunks</title>
+      <link>http://example.org/tags/thunks/</link>
+      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
+      
+      <guid>http://example.org/tags/thunks/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Typescript</title>
+      <link>http://example.org/tags/typescript/</link>
+      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
+      
+      <guid>http://example.org/tags/typescript/</guid>
+      <description></description>
+    </item>
+    
+  </channel>
+</rss>
