@@ -11,7 +11,7 @@ tags:
   - thunks
 ---
 
-In this post I will describe how to setup a simple  [Typescript](https://www.typescriptlang.org/) project for [React Native](https://facebook.github.io/react-native/) app with [Redux](https://react-redux.js.org/) and [Thunks](https://github.com/reduxjs/redux-thunk). All of the listed tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
+In this post I will describe how to setup a simple  [Typescript](https://www.typescriptlang.org/) project for [React Native](https://facebook.github.io/react-native/) app with [Redux](https://react-redux.js.org/) and [Thunks](https://github.com/reduxjs/redux-thunk). All of the listed tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript. 
 
 There are three main reasons it can be difficult to set up a React Native project with Typescript:
 
@@ -25,6 +25,8 @@ There are three main reasons it can be difficult to set up a React Native projec
 
 
 ## Start with official guide
+
+> Here's the [Github repo](https://github.com/jangnezda/ReactNativeRedux) of this project, if you want to jump straight into the code.
 
 Let's start with the [official guide](https://facebook.github.io/react-native/docs/getting-started.html). Select 'Building Projects with Native Code' tab and install dependencies for the chosen platform (Android and/or iOS). However, stop at 'Creating a new application' section. In that section the recommendation is to run following init command:
 
@@ -271,11 +273,11 @@ Next is `actions.ts`:
 ```ts
 import { ActionTypes, ThunkDispatch } from "./types";
 
-export const getTime = () => ({
+export const getTime = {
   type: ActionTypes.GetTime
-});
+};
 
-export const getWeather = () => (dispatch: ThunkDispatch) =>
+export const getWeather = (dispatch: ThunkDispatch) =>
   fetch("http://wttr.in/Copenhagen?format=3")
     .then(request => request.text())
     .then(body => {
@@ -291,7 +293,7 @@ export const getWeather = () => (dispatch: ThunkDispatch) =>
       });
     });
     
-export const getQuote = () => (dispatch: ThunkDispatch) =>
+export const getQuote = (dispatch: ThunkDispatch) =>
   fetch("http://quotes.rest/qod")
     .then(request => request.json())
     .then(body => {
@@ -301,7 +303,7 @@ export const getQuote = () => (dispatch: ThunkDispatch) =>
         quote: { message: quote.quote, author: quote.author }
       });
     })
-    .then(() => dispatch(getWeather()))
+    .then(() => dispatch(getWeather))
     .catch(e => {
       dispatch({
         type: ActionTypes.Error,
@@ -312,7 +314,7 @@ export const getQuote = () => (dispatch: ThunkDispatch) =>
 
 We have three actions:
 
-1. `getTime()`, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.
+1. `getTime`, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.
 2. `getWeather()`, which is a proper thunk (function that accepts dispatch parameter and returns a promise). We try to fetch from `http://wttr.in` and dispatch the result, or error in case the fetch fails.
 3. `getQuote()` which is very similar except that it calls `getWeather()` after it is done. This is allowed and supported  - one can dispatch actions within actions. Our approach here is serial dispatch, but we could also do it in parallel using for example `Promise.all()` construct. Again, the actual implementation is neatly tucked away in this file, so that the App component doesn't care how it's done. Imagine having many components and many actions. By splitting up the logic this way, you can use and combine actions whichever way you want.
 
@@ -371,6 +373,8 @@ Reducer is nothing fancy, we've just added handling of two new action types as w
 Last step is to update the App component:
 
 ```jsx
+import * as actions from "./actions";
+
 class App extends Component<Props> {
   render() {
     const {
@@ -412,16 +416,19 @@ const ConnectedApp = connect(
     weather: state.weather,
     error: state.error
   }),
-  (dispatch: ThunkDispatch): DispatchProps => ({
-    getTime: () => dispatch(getTime()),
-    getQuote: () => dispatch(getQuote())
-  })
+  {
+    getTime: actions.getTime,
+    getQuote: actions.getQuote
+  }
 )(App);
 ```
-We've added the button as well as rendering of the quote and the weather. The interesting bit is in the `connect()` function. Note how the component doesn't care anymore about specific action types. Instead, it just dispatches actions.
+We've added the button as well as rendering of the quote and the weather. The interesting bit is in the `connect()` function. Note how the component doesn't care anymore about specific action types. Even more: because our actions are functions that accept `dispatch` parameter (and we're using thunk middleware), we can just pass them to `connect()` as object literal.
 
 ## Final result
 
 Whew, that was some work. Here's the final result when clicking on the 'Get quote and weather' button (this time using iOS simulator):
 
 [![React Native Hello World](/posts/typescript-react-native/3.small.png)](/posts/typescript-react-native/3.png)
+
+To finish it off, here's the [Github repo](https://github.com/jangnezda/ReactNativeRedux) of this project. Happy hacking!
+

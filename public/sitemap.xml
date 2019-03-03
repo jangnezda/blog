@@ -3,53 +3,53 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://xabu.netlify.com/posts/typescript-react-native/</loc>
+    <loc>http://blog.rebased.dev/posts/typescript-react-native/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/</loc>
+    <loc>http://blog.rebased.dev/</loc>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/posts/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
-    <loc>https://xabu.netlify.com/tags/react-native/</loc>
+    <loc>http://blog.rebased.dev/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/tags/redux/</loc>
+    <loc>http://blog.rebased.dev/posts/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/</loc>
+    <loc>http://blog.rebased.dev/tags/react-native/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/tags/</loc>
+    <loc>http://blog.rebased.dev/tags/redux/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/tags/thunks/</loc>
+    <loc>http://blog.rebased.dev/tags/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
-    <loc>https://xabu.netlify.com/tags/typescript/</loc>
+    <loc>http://blog.rebased.dev/tags/thunks/</loc>
+    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>http://blog.rebased.dev/tags/typescript/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>

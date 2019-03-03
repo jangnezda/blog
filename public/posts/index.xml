@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
-		<title>Posts on Some of my thoughts</title>
-		<link>https://xabu.netlify.com/posts/</link>
-		<description>Recent content in Posts on Some of my thoughts</description>
+		<title>Posts on Jan&#39;s blog</title>
+		<link>http://blog.rebased.dev/posts/</link>
+		<description>Recent content in Posts on Jan&#39;s blog</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
 		<lastBuildDate>Tue, 22 Jan 2019 21:26:10 +0100</lastBuildDate>
-		<atom:link href="https://xabu.netlify.com/posts/index.xml" rel="self" type="application/rss+xml" />
+		<atom:link href="http://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
 		
 		<item>
 			<title>React Native with Typescript</title>
-			<link>https://xabu.netlify.com/posts/typescript-react-native/</link>
+			<link>http://blog.rebased.dev/posts/typescript-react-native/</link>
 			<pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
 			
-			<guid>https://xabu.netlify.com/posts/typescript-react-native/</guid>
+			<guid>http://blog.rebased.dev/posts/typescript-react-native/</guid>
 			<description>In this post I will describe how to setup a simple Typescript project for React Native app with Redux and Thunks. All of the listed tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
 There are three main reasons it can be difficult to set up a React Native project with Typescript:</description>
 			<content type="html"><![CDATA[
@@ -34,6 +34,10 @@ There are three main reasons it can be difficult to set up a React Native projec
 </ul>
 
 <h2 id="start-with-official-guide">Start with official guide</h2>
+
+<blockquote>
+<p>Here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux" target="_blank">Github repo</a> of this project, if you want to jump straight into the code.</p>
+</blockquote>
 
 <p>Let&rsquo;s start with the <a href="https://facebook.github.io/react-native/docs/getting-started.html" target="_blank">official guide</a>. Select &lsquo;Building Projects with Native Code&rsquo; tab and install dependencies for the chosen platform (Android and/or iOS). However, stop at &lsquo;Creating a new application&rsquo; section. In that section the recommendation is to run following init command:</p>
 
@@ -263,11 +267,11 @@ $ tsc
 <p>Next is <code>actions.ts</code>:</p>
 <div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
 
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getTime</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">({</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getTime</span> <span class="o">=</span> <span class="p">{</span>
   <span class="nx">type</span>: <span class="kt">ActionTypes.GetTime</span>
-<span class="p">});</span>
+<span class="p">};</span>
 
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getWeather</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getWeather</span> <span class="o">=</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
   <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;http://wttr.in/Copenhagen?format=3&#34;</span><span class="p">)</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">request</span> <span class="o">=&gt;</span> <span class="nx">request</span><span class="p">.</span><span class="nx">text</span><span class="p">())</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
@@ -283,7 +287,7 @@ $ tsc
       <span class="p">});</span>
     <span class="p">});</span>
     
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getQuote</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getQuote</span> <span class="o">=</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
   <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;http://quotes.rest/qod&#34;</span><span class="p">)</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">request</span> <span class="o">=&gt;</span> <span class="nx">request</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
@@ -293,7 +297,7 @@ $ tsc
         <span class="nx">quote</span><span class="o">:</span> <span class="p">{</span> <span class="nx">message</span>: <span class="kt">quote.quote</span><span class="p">,</span> <span class="nx">author</span>: <span class="kt">quote.author</span> <span class="p">}</span>
       <span class="p">});</span>
     <span class="p">})</span>
-    <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getWeather</span><span class="p">()))</span>
+    <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getWeather</span><span class="p">))</span>
     <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="nx">dispatch</span><span class="p">({</span>
         <span class="nx">type</span>: <span class="kt">ActionTypes.Error</span><span class="p">,</span>
@@ -303,7 +307,7 @@ $ tsc
 <p>We have three actions:</p>
 
 <ol>
-<li><code>getTime()</code>, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.</li>
+<li><code>getTime</code>, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.</li>
 <li><code>getWeather()</code>, which is a proper thunk (function that accepts dispatch parameter and returns a promise). We try to fetch from <code>http://wttr.in</code> and dispatch the result, or error in case the fetch fails.</li>
 <li><code>getQuote()</code> which is very similar except that it calls <code>getWeather()</code> after it is done. This is allowed and supported  - one can dispatch actions within actions. Our approach here is serial dispatch, but we could also do it in parallel using for example <code>Promise.all()</code> construct. Again, the actual implementation is neatly tucked away in this file, so that the App component doesn&rsquo;t care how it&rsquo;s done. Imagine having many components and many actions. By splitting up the logic this way, you can use and combine actions whichever way you want.</li>
 </ol>
@@ -357,7 +361,9 @@ $ tsc
 <p>Reducer is nothing fancy, we&rsquo;ve just added handling of two new action types as well as error action type. We&rsquo;ve also updated the <code>createStore()</code> call to apply the thunk middleware.</p>
 
 <p>Last step is to update the App component:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">App</span> <span class="k">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
+<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">import</span> <span class="o">*</span> <span class="nx">as</span> <span class="nx">actions</span> <span class="nx">from</span> <span class="s2">&#34;./actions&#34;</span><span class="p">;</span>
+
+<span class="k">class</span> <span class="nx">App</span> <span class="k">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">const</span> <span class="p">{</span>
       <span class="nx">currentTime</span><span class="p">,</span>
@@ -398,18 +404,20 @@ $ tsc
     <span class="nx">weather</span><span class="o">:</span> <span class="nx">state</span><span class="p">.</span><span class="nx">weather</span><span class="p">,</span>
     <span class="nx">error</span><span class="o">:</span> <span class="nx">state</span><span class="p">.</span><span class="nx">error</span>
   <span class="p">}),</span>
-  <span class="p">(</span><span class="nx">dispatch</span><span class="o">:</span> <span class="nx">ThunkDispatch</span><span class="p">)</span><span class="o">:</span> <span class="nx">DispatchProps</span> <span class="p">=&gt;</span> <span class="p">({</span>
-    <span class="nx">getTime</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getTime</span><span class="p">()),</span>
-    <span class="nx">getQuote</span><span class="o">:</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getQuote</span><span class="p">())</span>
-  <span class="p">})</span>
+  <span class="p">{</span>
+    <span class="nx">getTime</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">getTime</span><span class="p">,</span>
+    <span class="nx">getQuote</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">getQuote</span>
+  <span class="p">}</span>
 <span class="p">)(</span><span class="nx">App</span><span class="p">);</span></code></pre></div>
-<p>We&rsquo;ve added the button as well as rendering of the quote and the weather. The interesting bit is in the <code>connect()</code> function. Note how the component doesn&rsquo;t care anymore about specific action types. Instead, it just dispatches actions.</p>
+<p>We&rsquo;ve added the button as well as rendering of the quote and the weather. The interesting bit is in the <code>connect()</code> function. Note how the component doesn&rsquo;t care anymore about specific action types. Even more: because our actions are functions that accept <code>dispatch</code> parameter (and we&rsquo;re using thunk middleware), we can just pass them to <code>connect()</code> as object literal.</p>
 
 <h2 id="final-result">Final result</h2>
 
 <p>Whew, that was some work. Here&rsquo;s the final result when clicking on the &lsquo;Get quote and weather&rsquo; button (this time using iOS simulator):</p>
 
 <p><a href="/posts/typescript-react-native/3.png"><img src="/posts/typescript-react-native/3.small.png" alt="React Native Hello World" /></a></p>
+
+<p>To finish it off, here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux" target="_blank">Github repo</a> of this project. Happy hacking!</p>
 ]]></content>
 		</item>
 		

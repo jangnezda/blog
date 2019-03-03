@@ -1,6 +1,6 @@
-baseURL = "https://xabu.netlify.com/"
+baseURL = "http://blog.rebased.dev/"
 languageCode = "en-us"
-title = "Some of my thoughts"
+title = "Jan's blog"
 theme = "hermit"
 
 pygmentsCodefences = true
@@ -29,7 +29,7 @@ rssLimit = 10
   # images = [""]
   themeColor = "#494f5c"
 
-  homeSubtitle = "The only way is forward."
+  homeSubtitle = "Thoughts as code"
   # bgImg = ""  # Homepage background-image URL
 
   # Toggle this option need to rebuild SCSS, requires extended version of Hugo
