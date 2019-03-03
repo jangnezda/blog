@@ -14,7 +14,7 @@ There are three main reasons it can be difficult to set up a React Native projec
 
 <meta itemprop="datePublished" content="2019-01-22T21:26:10&#43;01:00" />
 <meta itemprop="dateModified" content="2019-01-22T21:26:10&#43;01:00" />
-<meta itemprop="wordCount" content="2199">
+<meta itemprop="wordCount" content="2205">
 
 
 
@@ -47,7 +47,7 @@ There are three main reasons it can be difficult to set up a React Native projec
 		<div class="hdr-wrapper section-inner">
 			<div class="hdr-left">
 				<div class="site-branding">
-					<a href="https://blog.rebased.dev/">Jan&#39;s blog</a>
+					<a href="https://blog.rebased.dev/">rebased</a>
 				</div>
 				<nav class="site-nav hide-in-mobile">
 					<a href="https://blog.rebased.dev/posts/">Posts</a>
@@ -322,11 +322,11 @@ $ tsc
 <p>Next is <code>actions.ts</code>:</p>
 <div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
 
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getTime</span> <span class="o">=</span> <span class="p">{</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getTime</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">({</span>
   <span class="nx">type</span>: <span class="kt">ActionTypes.GetTime</span>
-<span class="p">};</span>
+<span class="p">});</span>
 
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getWeather</span> <span class="o">=</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getWeather</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
   <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;http://wttr.in/Copenhagen?format=3&#34;</span><span class="p">)</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">request</span> <span class="o">=&gt;</span> <span class="nx">request</span><span class="p">.</span><span class="nx">text</span><span class="p">())</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
@@ -342,7 +342,7 @@ $ tsc
       <span class="p">});</span>
     <span class="p">});</span>
     
-<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getQuote</span> <span class="o">=</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
+<span class="kr">export</span> <span class="kr">const</span> <span class="nx">getQuote</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
   <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;http://quotes.rest/qod&#34;</span><span class="p">)</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">request</span> <span class="o">=&gt;</span> <span class="nx">request</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
@@ -352,7 +352,7 @@ $ tsc
         <span class="nx">quote</span><span class="o">:</span> <span class="p">{</span> <span class="nx">message</span>: <span class="kt">quote.quote</span><span class="p">,</span> <span class="nx">author</span>: <span class="kt">quote.author</span> <span class="p">}</span>
       <span class="p">});</span>
     <span class="p">})</span>
-    <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getWeather</span><span class="p">))</span>
+    <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getWeather</span><span class="p">()))</span>
     <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="nx">dispatch</span><span class="p">({</span>
         <span class="nx">type</span>: <span class="kt">ActionTypes.Error</span><span class="p">,</span>
@@ -362,7 +362,7 @@ $ tsc
 <p>We have three actions:</p>
 
 <ol>
-<li><code>getTime</code>, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.</li>
+<li><code>getTime()</code>, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.</li>
 <li><code>getWeather()</code>, which is a proper thunk (function that accepts dispatch parameter and returns a promise). We try to fetch from <code>http://wttr.in</code> and dispatch the result, or error in case the fetch fails.</li>
 <li><code>getQuote()</code> which is very similar except that it calls <code>getWeather()</code> after it is done. This is allowed and supported  - one can dispatch actions within actions. Our approach here is serial dispatch, but we could also do it in parallel using for example <code>Promise.all()</code> construct. Again, the actual implementation is neatly tucked away in this file, so that the App component doesn&rsquo;t care how it&rsquo;s done. Imagine having many components and many actions. By splitting up the logic this way, you can use and combine actions whichever way you want.</li>
 </ol>
@@ -480,7 +480,7 @@ $ tsc
 				<p>
 					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://blog.rebased.dev/tags/react-native">react native</a></span><span class="tag"><a href="https://blog.rebased.dev/tags/typescript">typescript</a></span><span class="tag"><a href="https://blog.rebased.dev/tags/redux">redux</a></span><span class="tag"><a href="https://blog.rebased.dev/tags/thunks">thunks</a></span>
 				</p>
-				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>2199 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>2205 Words</p>
 				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>22. Jan 2019, 21:26</p>
 			</footer>
 		</article>

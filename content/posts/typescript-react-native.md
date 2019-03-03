@@ -273,11 +273,11 @@ Next is `actions.ts`:
 ```ts
 import { ActionTypes, ThunkDispatch } from "./types";
 
-export const getTime = {
+export const getTime = () => ({
   type: ActionTypes.GetTime
-};
+});
 
-export const getWeather = (dispatch: ThunkDispatch) =>
+export const getWeather = () => (dispatch: ThunkDispatch) =>
   fetch("http://wttr.in/Copenhagen?format=3")
     .then(request => request.text())
     .then(body => {
@@ -293,7 +293,7 @@ export const getWeather = (dispatch: ThunkDispatch) =>
       });
     });
     
-export const getQuote = (dispatch: ThunkDispatch) =>
+export const getQuote = () => (dispatch: ThunkDispatch) =>
   fetch("http://quotes.rest/qod")
     .then(request => request.json())
     .then(body => {
@@ -303,7 +303,7 @@ export const getQuote = (dispatch: ThunkDispatch) =>
         quote: { message: quote.quote, author: quote.author }
       });
     })
-    .then(() => dispatch(getWeather))
+    .then(() => dispatch(getWeather()))
     .catch(e => {
       dispatch({
         type: ActionTypes.Error,
@@ -314,7 +314,7 @@ export const getQuote = (dispatch: ThunkDispatch) =>
 
 We have three actions:
 
-1. `getTime`, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.
+1. `getTime()`, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.
 2. `getWeather()`, which is a proper thunk (function that accepts dispatch parameter and returns a promise). We try to fetch from `http://wttr.in` and dispatch the result, or error in case the fetch fails.
 3. `getQuote()` which is very similar except that it calls `getWeather()` after it is done. This is allowed and supported  - one can dispatch actions within actions. Our approach here is serial dispatch, but we could also do it in parallel using for example `Promise.all()` construct. Again, the actual implementation is neatly tucked away in this file, so that the App component doesn't care how it's done. Imagine having many components and many actions. By splitting up the logic this way, you can use and combine actions whichever way you want.
 

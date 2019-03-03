@@ -1,6 +1,6 @@
 baseURL = "https://blog.rebased.dev/"
 languageCode = "en-us"
-title = "Jan's blog"
+title = "rebased"
 theme = "hermit"
 
 pygmentsCodefences = true
@@ -29,7 +29,7 @@ rssLimit = 10
   # images = [""]
   themeColor = "#494f5c"
 
-  homeSubtitle = "Thoughts as code"
+  homeSubtitle = "Because my thoughts are constantly revisioned ;)"
   # bgImg = ""  # Homepage background-image URL
 
   # Toggle this option need to rebuild SCSS, requires extended version of Hugo

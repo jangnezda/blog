@@ -13,12 +13,6 @@
   </url>
   
   <url>
-    <loc>https://blog.rebased.dev/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
-    <priority>0</priority>
-  </url>
-  
-  <url>
     <loc>https://blog.rebased.dev/posts/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
@@ -50,6 +44,12 @@
   
   <url>
     <loc>https://blog.rebased.dev/tags/typescript/</loc>
+    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://blog.rebased.dev/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
     <priority>0</priority>
   </url>
