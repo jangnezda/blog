@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Redux on Jan&#39;s blog</title>
+    <link>https://blog.rebased.dev/tags/redux/</link>
+    <description>Recent content in Redux on Jan&#39;s blog</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 22 Jan 2019 21:26:10 +0100</lastBuildDate>
+    
+	<atom:link href="https://blog.rebased.dev/tags/redux/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>React Native with Typescript</title>
+      <link>https://blog.rebased.dev/posts/typescript-react-native/</link>
+      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
+      
+      <guid>https://blog.rebased.dev/posts/typescript-react-native/</guid>
+      <description>In this post I will describe how to setup a simple Typescript project for React Native app with Redux and Thunks. All of the listed tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
+There are three main reasons it can be difficult to set up a React Native project with Typescript:</description>
+    </item>
+    
+  </channel>
+</rss>
