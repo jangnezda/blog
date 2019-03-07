@@ -11,7 +11,7 @@ tags:
   - thunks
 ---
 
-In this post I will describe how to setup a simple  [Typescript](https://www.typescriptlang.org/) project for [React Native](https://facebook.github.io/react-native/) app with [Redux](https://react-redux.js.org/) and [Thunks](https://github.com/reduxjs/redux-thunk). All of the listed tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript. 
+In this post I will describe how to setup a simple  [Typescript](https://www.typescriptlang.org/) project for [React Native](https://facebook.github.io/react-native/) app with [Redux](https://react-redux.js.org/) and [Thunks](https://github.com/reduxjs/redux-thunk). All of these tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
 
 There are three main reasons it can be difficult to set up a React Native project with Typescript:
 
@@ -22,6 +22,8 @@ There are three main reasons it can be difficult to set up a React Native projec
 * Typescript's error messages can often be cryptic or just plain misleading, but it gets easier as you get more experienced with Typescript and various typings packages.
 
 * Authors of various typings packages tend to make breaking changes on minor version bumps.
+
+Therefore, if you struggle with typing errors even though you're following simple redux-related tutorials, you probably can fix them by downgrading a dependency or its type definitions.
 
 
 ## Start with official guide
