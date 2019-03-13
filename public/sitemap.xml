@@ -3,6 +3,11 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
+    <loc>https://blog.rebased.dev/posts/react-preload-data/</loc>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://blog.rebased.dev/posts/typescript-react-native/</loc>
     <lastmod>2019-01-22T21:26:10+01:00</lastmod>
   </url>
@@ -14,7 +19,13 @@
   
   <url>
     <loc>https://blog.rebased.dev/posts/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
+    <priority>0</priority>
+  </url>
+  
+  <url>
+    <loc>https://blog.rebased.dev/tags/react/</loc>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -26,13 +37,13 @@
   
   <url>
     <loc>https://blog.rebased.dev/tags/redux/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
     <priority>0</priority>
   </url>
   
   <url>
     <loc>https://blog.rebased.dev/tags/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
     <priority>0</priority>
   </url>
   
@@ -50,7 +61,7 @@
   
   <url>
     <loc>https://blog.rebased.dev/</loc>
-    <lastmod>2019-01-22T21:26:10+01:00</lastmod>
+    <lastmod>2019-03-12T22:21:59+01:00</lastmod>
     <priority>0</priority>
   </url>
   

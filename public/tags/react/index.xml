@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>rebased</title>
-    <link>https://blog.rebased.dev/</link>
-    <description>Recent content on rebased</description>
+    <title>React on rebased</title>
+    <link>https://blog.rebased.dev/tags/react/</link>
+    <description>Recent content in React on rebased</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <lastBuildDate>Tue, 12 Mar 2019 22:21:59 +0100</lastBuildDate>
     
-	<atom:link href="https://blog.rebased.dev/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://blog.rebased.dev/tags/react/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -19,16 +19,6 @@
       <guid>https://blog.rebased.dev/posts/react-preload-data/</guid>
       <description>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&amp;rsquo;s take a look how we can preload some data in React components.
 React documentation I always check the documentation first when exploring how to do something with React.</description>
-    </item>
-    
-    <item>
-      <title>React Native with Typescript</title>
-      <link>https://blog.rebased.dev/posts/typescript-react-native/</link>
-      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
-      
-      <guid>https://blog.rebased.dev/posts/typescript-react-native/</guid>
-      <description>In this post I will describe how to setup a simple Typescript project for React Native app with Redux and Thunks. All of these tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
-There are three main reasons it can be difficult to set up a React Native project with Typescript:</description>
     </item>
     
   </channel>

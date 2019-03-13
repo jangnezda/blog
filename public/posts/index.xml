@@ -6,8 +6,230 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Tue, 22 Jan 2019 21:26:10 +0100</lastBuildDate>
+		<lastBuildDate>Tue, 12 Mar 2019 22:21:59 +0100</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Preloading data for React components</title>
+			<link>https://blog.rebased.dev/posts/react-preload-data/</link>
+			<pubDate>Tue, 12 Mar 2019 22:21:59 +0100</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/react-preload-data/</guid>
+			<description>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&amp;rsquo;s take a look how we can preload some data in React components.
+React documentation I always check the documentation first when exploring how to do something with React.</description>
+			<content type="html"><![CDATA[
+
+<p>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&rsquo;s take a look how we can preload some data in React components.</p>
+
+<h2 id="react-documentation">React documentation</h2>
+
+<p>I always check the documentation first when exploring how to do something with React. There are hints and recommendations on how to do (or not do) things in React applications. Sure enough, there&rsquo;s a <a href="https://reactjs.org/docs/faq-ajax.html" target="_blank">section</a> about fetching data from APIs. The recommended way is to use <code>componentDidMount()</code> lifecycle method:</p>
+<div class="highlight"><pre class="chroma"><code class="language-js" data-lang="js"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="c1">// some state
+</span><span class="c1"></span>    <span class="p">};</span>
+  <span class="p">}</span>
+
+  <span class="nx">componentDidMount</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;https://api.example.com/items&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">res</span> <span class="p">=&gt;</span> <span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
+      <span class="p">.</span><span class="nx">then</span><span class="p">(</span>
+        <span class="c1">// update the state with results
+</span><span class="c1"></span>      <span class="p">);</span>
+  <span class="p">}</span>
+  
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// render the component using data from state
+</span><span class="c1"></span>  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>This works as expected: data is fetched and then rendered. The problem with this solution is that our component contains data loading logic that is coupled to a lifecycle method. This means it&rsquo;s harder to test and reuse the component. Ideally, we&rsquo;d want to move this logic out and instead inject <code>items</code> array as a property into this component. That way, we can easily test it and use it in Storybook, for example.</p>
+
+<h2 id="wrapper-component">Wrapper component</h2>
+
+<p>To solve this tight coupling, one may instead move the fetching logic into a wrapper component. This means that we can define a separate component that just does the fetching, then renders <code>MyComponent</code> with <code>items</code> prop.</p>
+<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="nx">itemsLoaded</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">(</span>
+        <span class="c1">// render items
+</span><span class="c1"></span>      <span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="c1">// render loading indicator
+</span><span class="c1"></span>    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">class</span> <span class="nx">Wrapper</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="nx">items</span><span class="o">:</span> <span class="p">[],</span>
+      <span class="nx">itemsLoaded</span><span class="o">:</span> <span class="kc">false</span>
+    <span class="p">};</span>
+  <span class="p">}</span>
+  
+  <span class="nx">componentDidMount</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fetch</span><span class="p">(</span><span class="s2">&#34;https://api.example.com/items&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">res</span> <span class="p">=&gt;</span> <span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
+      <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">result</span> <span class="p">=&gt;</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">setState</span><span class="p">({</span>
+          <span class="nx">items</span><span class="o">:</span> <span class="nx">result</span><span class="p">.</span><span class="nx">items</span><span class="p">,</span>
+          <span class="nx">itemsLoaded</span><span class="o">:</span> <span class="kc">true</span>
+        <span class="p">});</span>
+      <span class="p">});</span>
+  <span class="p">}</span>
+
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="p">&lt;</span><span class="nt">MyComponent</span>
+        <span class="na">items</span><span class="o">=</span><span class="s">{items}</span>
+        <span class="na">itemsLoaded</span><span class="o">=</span><span class="s">{itemsLoaded}</span>
+        <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
+      <span class="p">/&gt;</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+<p>Ok, so now we can use the <code>Wrapper</code> component elsewhere in our app&rsquo;s pages and the inner <code>MyComponent</code> in tests and Storybook. Great! But we&rsquo;re not satisfied yet, because the pattern of preloading data is common for different components and api calls, and it would be tedious to write specific wrapper components for every use-case.</p>
+
+<p>A more generalized version of wrapper component would accept the data fetching function as a property, then invoke it in <code>componentDidMount()</code> and pass the result to the inner component:</p>
+<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="nx">dataLoaded</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">(</span>
+        <span class="c1">// render items
+</span><span class="c1"></span>      <span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="c1">// render loading indicator
+</span><span class="c1"></span>    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">class</span> <span class="nx">Wrapper</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="nx">data</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+      <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">false</span>
+    <span class="p">};</span>
+  <span class="p">}</span>
+  
+  <span class="nx">componentDidMount</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">.</span><span class="nx">preload</span><span class="p">()</span>
+      <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">data</span> <span class="p">=&gt;</span> <span class="p">{</span>
+        <span class="k">this</span><span class="p">.</span><span class="nx">setState</span><span class="p">({</span>
+          <span class="nx">data</span><span class="p">,</span>
+          <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">true</span>
+        <span class="p">});</span>
+      <span class="p">});</span>
+  <span class="p">}</span>
+
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="p">&lt;</span><span class="nt">Component</span>
+        <span class="na">data</span><span class="o">=</span><span class="s">{data}</span>
+        <span class="na">dataLoaded</span><span class="o">=</span><span class="s">{dataLoaded}</span>
+        <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
+      <span class="p">/&gt;</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// ... used elsewhere in the app as:
+</span><span class="c1"></span><span class="k">class</span> <span class="nx">MyPage</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="p">&lt;</span><span class="nt">Wrapper</span> <span class="na">component</span><span class="o">=</span><span class="s">{MyComponent}</span> <span class="na">preload</span><span class="o">=</span><span class="s">{actions.fetchItems}</span> <span class="p">/&gt;</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+<p>This generalized version looks like a good and reusable solution. However, it&rsquo;s still a bit ugly and it&rsquo;s annoying that <code>MyPage</code> has to be aware of preloading boilerplate. Wouldn&rsquo;t it be nice if we could encapsulate that within <code>MyComponent</code>?</p>
+
+<h2 id="higher-order-component">Higher-Order component</h2>
+
+<p>We can reach for another technique that is frequently used in React apps and that&rsquo;s higher-order components. As React documentation <a href="https://reactjs.org/docs/higher-order-components.html" target="_blank">explains</a>, a higher-order component is a function that takes a component and returns a new component. The idea is that instead of having a wrapper component, we define a higher-order component for prefetching and then wrap <code>MyComponent</code> with <code>prefetch()</code> function. This is what we want to achieve:</p>
+<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    
+    <span class="k">if</span> <span class="p">(</span><span class="nx">dataLoaded</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="p">(</span>
+        <span class="c1">// render items
+</span><span class="c1"></span>      <span class="p">);</span>
+    <span class="p">}</span>
+    
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="c1">// render loading indicator
+</span><span class="c1"></span>    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">class</span> <span class="nx">MyComponentWithData</span> <span class="o">=</span> <span class="nx">prefetch</span><span class="p">({</span>
+  <span class="nx">onComponentDidMount</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">fetchItems</span>
+<span class="p">})(</span><span class="nx">MyComponent</span><span class="p">);</span>
+
+<span class="c1">// ... used elsewhere in the app as:
+</span><span class="c1"></span><span class="k">class</span> <span class="nx">MyPage</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+  <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="p">(</span>
+      <span class="p">&lt;</span><span class="nt">MyComponentWithData</span> <span class="p">/&gt;</span>
+    <span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span></code></pre></div>
+<p>This is much better. <code>MyPage</code> does not care about intricacies of loading data necessary for <code>MyComponent</code> rendering. The <code>prefetch()</code> function looks quite similar to previous <code>WrapperComponent</code>, except that it takes a function as parameter, which is then executed in <code>componentDidMount()</code> method, and returns a function which in turn returns a React component:</p>
+<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">const</span> <span class="nx">prefetch</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">onComponentDidMount</span> <span class="p">})</span> <span class="p">=&gt;</span>
+  <span class="nx">WrappedComponent</span> <span class="p">=&gt;</span> <span class="k">class</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+    <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+      <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="nx">data</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
+        <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">false</span>
+      <span class="p">};</span>
+    <span class="p">}</span>
+  
+    <span class="nx">componentDidMount</span><span class="p">()</span> <span class="p">{</span>
+      <span class="nx">onComponentDidMount</span><span class="p">()</span>
+        <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">data</span> <span class="p">=&gt;</span> <span class="p">{</span>
+          <span class="k">this</span><span class="p">.</span><span class="nx">setState</span><span class="p">({</span>
+            <span class="nx">data</span><span class="p">,</span>
+            <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">true</span>
+          <span class="p">});</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+
+    <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+      <span class="k">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+      <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    
+      <span class="k">return</span> <span class="p">(</span>
+        <span class="p">&lt;</span><span class="nt">WrappedComponent</span>
+          <span class="na">data</span><span class="o">=</span><span class="s">{data}</span>
+          <span class="na">dataLoaded</span><span class="o">=</span><span class="s">{dataLoaded}</span>
+          <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
+        <span class="p">/&gt;</span>
+      <span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span></code></pre></div>
+<p>We could generalize the <code>prefetch()</code> function even more: it could take in other lifecycle methods as well (<code>componentDidUpdate()</code>, <code>componentWillReceiveProps()</code>, and so on). The function would become somewhat complex, though, due to state management and wrapped components would have to know exactly what state is passed to them as props. It would be quite brittle design. To solve that I recommend to reach for <a href="https://redux.js.org/" target="_blank">Redux</a>, because then the state management isn&rsquo;t baked into components.</p>
+
+<p>As you might guess, the pattern I described in this post isn&rsquo;t something new. There is also a cool little package called <a href="https://github.com/JamieDixon/react-lifecycle-component" target="_blank">react-lifecycle-component</a>, which you can use to solve prefetching data in generic way. Works great with Redux, too.</p>
+]]></content>
+		</item>
 		
 		<item>
 			<title>React Native with Typescript</title>
