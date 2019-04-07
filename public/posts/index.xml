@@ -159,9 +159,7 @@ The Phoenix framework is one of the most popular web frameworks in Elixir commun
   <span class="ss">store</span><span class="p">:</span> <span class="nc">MyApp.SessionStore</span><span class="p">,</span>
   <span class="ss">key</span><span class="p">:</span> <span class="s2">&#34;_myapp_sid&#34;</span><span class="p">,</span>
   <span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">,</span>
-  <span class="c1"># Plug.Session reserves `max_age` key for itself,</span>
-  <span class="c1"># so the store has its own &#39;max_age&#39;.</span>
-  <span class="ss">store_max_age</span><span class="p">:</span> <span class="n">max_ag</span>
+  <span class="ss">store_max_age</span><span class="p">:</span> <span class="n">max_age</span>
   
 <span class="c1"># ...</span></code></pre></div>
 <p>The <code>key</code> config param is used to name the cookie in request headers (and subsequently in browser), for example:</p>

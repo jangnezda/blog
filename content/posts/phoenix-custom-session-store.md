@@ -160,9 +160,7 @@ plug Plug.Session,
   store: MyApp.SessionStore,
   key: "_myapp_sid",
   max_age: max_age,
-  # Plug.Session reserves `max_age` key for itself,
-  # so the store has its own 'max_age'.
-  store_max_age: max_ag
+  store_max_age: max_age
   
 # ...
 ```
