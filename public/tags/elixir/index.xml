@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Elixir on rebased</title>
+    <link>https://blog.rebased.dev/tags/elixir/</link>
+    <description>Recent content in Elixir on rebased</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 05 Apr 2019 19:56:59 +0200</lastBuildDate>
+    
+	<atom:link href="https://blog.rebased.dev/tags/elixir/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Custom Session Store in Phoenix App</title>
+      <link>https://blog.rebased.dev/posts/phoenix-custom-session-store/</link>
+      <pubDate>Fri, 05 Apr 2019 19:56:59 +0200</pubDate>
+      
+      <guid>https://blog.rebased.dev/posts/phoenix-custom-session-store/</guid>
+      <description>In this post I&amp;rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&amp;rsquo;s super easy!
+The Phoenix framework is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&amp;rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily.</description>
+    </item>
+    
+  </channel>
+</rss>

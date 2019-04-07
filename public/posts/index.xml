@@ -6,8 +6,176 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Tue, 12 Mar 2019 22:21:59 +0100</lastBuildDate>
+		<lastBuildDate>Fri, 05 Apr 2019 19:56:59 +0200</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Custom Session Store in Phoenix App</title>
+			<link>https://blog.rebased.dev/posts/phoenix-custom-session-store/</link>
+			<pubDate>Fri, 05 Apr 2019 19:56:59 +0200</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/phoenix-custom-session-store/</guid>
+			<description>In this post I&amp;rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&amp;rsquo;s super easy!
+The Phoenix framework is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&amp;rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily.</description>
+			<content type="html"><![CDATA[
+
+<p>In this post I&rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&rsquo;s super easy!</p>
+
+<p>The <a href="https://github.com/phoenixframework/phoenix" target="_blank">Phoenix framework</a> is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily. This applies to session storage as well.</p>
+
+<p>Phoenix uses <a href="https://hexdocs.pm/plug/Plug.Session.html" target="_blank">Plug.Session</a> to handle http sessions. A plug is a function that receives a connection, does its thing and then returns a connection. You can think of it as middleware. The session plug provides two strategies for saving session state:</p>
+
+<ol>
+<li><code>Plug.Session.ETS</code>: session state is stored in an in-memory <a href="https://elixir-lang.org/getting-started/mix-otp/ets.html" target="_blank">ETS table</a>.</li>
+<li><code>Plug.Session.COOKIE</code>: session state is stored within the cookie itself (cookie is encrypted, of course).</li>
+</ol>
+
+<p>These two strategies are totally fine for certain types of apps, but may not be the right choice for your app. Maybe you don&rsquo;t want session state to propagate to users&rsquo; browsers or have a distributed deployment where different app instances should be able to recognize user&rsquo;s session cookie. Whatever the reason may be, you can tell Phoenix to use custom session store when initializing <code>Plug.Session</code> middleware.</p>
+
+<p>Just a note before we dive into implementation. The session &lsquo;store&rsquo; is a bit of misnomer. It won&rsquo;t actually store anything, but act more like a glue between Phoenix and a real backing store. Backing store may be a Postgres database, Redis or Mongo, for example.</p>
+
+<h2 id="step-one-implementation">Step one: implementation</h2>
+
+<p>Let&rsquo;s start by creating a new module that will be our custom store. We need to:</p>
+
+<ol>
+<li>Use <code>@behaviour Plug.Session.Store</code> to tell that the module can be used as session store. <code>Plug.Session</code> will then call our store as needed (login, logout, etc.).</li>
+<li>Implement four functions:
+
+<ol>
+<li><code>init/1</code> - do any needed initialization. The returned <code>opts</code> are later passed to following three functions.</li>
+<li><code>get/3</code> - fetch session data.</li>
+<li><code>put/4</code> - save (new) session.</li>
+<li><code>delete/3</code> - remove invalidated session.</li>
+</ol></li>
+</ol>
+
+<p>In our example, we&rsquo;ll assume that sessions will be stored in a Postgres database that has a table named <code>sessions</code> and our app already has an api and schema to read and write to the database. Further, we want our sessions to be valid for certain amount of time and after that become invalid. For example, this could be the Ecto schema for sessions:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">schema</span> <span class="s2">&#34;sessions&#34;</span> <span class="n">do</span>
+    <span class="n">field</span><span class="p">(</span><span class="ss">:session_cookie</span><span class="p">,</span> <span class="ss">:string</span><span class="p">)</span>
+    <span class="n">field</span><span class="p">(</span><span class="ss">:valid_from</span><span class="p">,</span> <span class="ss">:utc_datetime</span><span class="p">)</span>
+    <span class="n">field</span><span class="p">(</span><span class="ss">:valid_to</span><span class="p">,</span> <span class="ss">:utc_datetime</span><span class="p">)</span>
+
+    <span class="n">belongs_to</span><span class="p">(</span><span class="ss">:user</span><span class="p">,</span> <span class="nc">MyApp.Domain.User</span><span class="p">)</span>
+  <span class="n">end</span></code></pre></div>
+<p>Very basic structure as it only contains fields for cookie and validity interval.</p>
+
+<p>Alright, let&rsquo;s start. Create a new file somewhere in app&rsquo;s lib directory structure. In this case, I&rsquo;d put it right next to <code>endpoint.ex</code> in <code>lib/myapp</code> (or <code>apps/myapp_web/lib/myapp_web</code> in an umbrella project). Let&rsquo;s start with <code>init/1</code> and <code>get/3</code>:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">MyApp.SessionStore</span> <span class="n">do</span>
+  <span class="na">@moduledoc</span> <span class="sh">&#34;&#34;&#34;
+</span><span class="sh">  Session store that uses Postgres as backing storage.
+</span><span class="sh">  &#34;&#34;&#34;</span>
+  
+  <span class="na">@behaviour</span> <span class="nc">Plug.Session.Store</span>
+
+  <span class="n">alias</span> <span class="nc">MyApp.Api.Sessions</span>
+  <span class="n">alias</span> <span class="nc">MyApp.Domain.Session</span>
+
+  <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span> <span class="n">do</span>
+    <span class="c1"># By default, sessions will be valid for 1 hour</span>
+    <span class="n">max_age</span> <span class="o">=</span> <span class="nc">Keyword</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">opts</span><span class="p">,</span> <span class="ss">:store_max_age</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)</span>
+
+    <span class="p">%{</span><span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">}</span>
+  <span class="n">end</span>
+
+  <span class="n">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
+      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
+      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">do</span>
+    <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+  <span class="n">end</span>
+  
+  <span class="n">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="nc">Sessions</span><span class="o">.</span><span class="n">get_by_session_cookie</span><span class="p">(</span><span class="n">cookie</span><span class="p">)</span>
+    <span class="n">get_for_session</span><span class="p">(</span><span class="n">cookie</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span>
+  <span class="n">end</span>
+
+  <span class="n">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">_cookie</span><span class="p">,</span> <span class="n">nil</span><span class="p">),</span> <span class="ss">do</span><span class="p">:</span> <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+
+  <span class="n">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">cookie</span><span class="p">,</span> <span class="p">%</span><span class="nc">Session</span><span class="p">{</span><span class="ss">user_id</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="ss">valid_to</span><span class="p">:</span> <span class="n">valid_to</span><span class="p">})</span> <span class="n">do</span>
+    <span class="n">now</span> <span class="o">=</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">utc_now</span><span class="p">()</span>
+
+    <span class="n">if</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">now</span><span class="p">,</span> <span class="n">valid_to</span><span class="p">)</span> <span class="o">==</span> <span class="ss">:lt</span> <span class="n">do</span>
+      <span class="p">{</span><span class="n">cookie</span><span class="p">,</span> <span class="p">%{</span><span class="s2">&#34;user_id&#34;</span> <span class="o">=&gt;</span> <span class="n">id</span><span class="p">}}</span>
+    <span class="n">else</span>
+      <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+    <span class="n">end</span>
+  <span class="n">end</span>
+  
+  <span class="c1"># continued below ...</span>
+<span class="n">end</span></code></pre></div>
+<p>The <code>init/1</code> function is passed the <code>Plug.Session</code> configuration params, which we check for <code>store_max_age</code> or default to 1 hour if param wasn&rsquo;t set.</p>
+
+<p>The <code>get/3</code> is more insteresting. First, we pattern match on empty cookie and in that case return empty values as well. Otherwise, we try to load the session using that cookie. If the session is found, then we check if it&rsquo;s still valid.</p>
+
+<p>Next on, the <code>put/4</code> function:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">def</span> <span class="n">put</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">term</span><span class="p">[</span><span class="s2">&#34;user_id&#34;</span><span class="p">]</span>
+
+    <span class="n">if</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">and</span> <span class="n">user_id</span> <span class="o">!=</span> <span class="n">nil</span> <span class="n">do</span>
+      <span class="p">%{</span><span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">}</span> <span class="o">=</span> <span class="n">opts</span>
+
+      <span class="n">valid_from</span> <span class="o">=</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">utc_now</span><span class="p">()</span>
+      <span class="n">valid_to</span> <span class="o">=</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">from_unix!</span><span class="p">(</span><span class="nc">DateTime</span><span class="o">.</span><span class="n">to_unix</span><span class="p">(</span><span class="n">valid_from</span><span class="p">)</span> <span class="o">+</span> <span class="n">max_age</span><span class="p">)</span>
+
+      <span class="n">new_cookie</span> <span class="o">=</span> <span class="ss">:crypto</span><span class="o">.</span><span class="n">strong_rand_bytes</span><span class="p">(</span><span class="mi">64</span><span class="p">)</span> <span class="o">|&gt;</span> <span class="nc">Base</span><span class="o">.</span><span class="n">encode64</span><span class="p">()</span>
+
+      <span class="nc">Sessions</span><span class="o">.</span><span class="n">create!</span><span class="p">(%{</span>
+        <span class="ss">session_cookie</span><span class="p">:</span> <span class="n">new_cookie</span><span class="p">,</span>
+        <span class="ss">valid_from</span><span class="p">:</span> <span class="n">valid_from</span><span class="p">,</span>
+        <span class="ss">valid_to</span><span class="p">:</span> <span class="n">valid_to</span><span class="p">,</span>
+        <span class="ss">user_id</span><span class="p">:</span> <span class="n">user_id</span>
+      <span class="p">})</span>
+
+      <span class="n">session_cookie</span>
+    <span class="n">else</span>
+      <span class="n">cookie</span>
+    <span class="n">end</span>
+  <span class="n">end</span></code></pre></div>
+<p>In <code>put/4</code>, we&rsquo;ll only create new session if there isn&rsquo;t already a session cookie and if the user is known. Otherwise, we just return the input <code>cookie</code>.</p>
+
+<p>The <code>delete/3</code> is only couple of lines:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
+      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
+      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">do</span>
+    <span class="ss">:ok</span>
+  <span class="n">end</span>
+
+  <span class="n">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="n">do</span>
+    <span class="nc">Sessions</span><span class="o">.</span><span class="n">delete_by_session_cookie</span><span class="p">(</span><span class="n">sid</span><span class="p">)</span>
+    <span class="ss">:ok</span>
+  <span class="n">end</span></code></pre></div>
+<p>We apply similar pattern as we did with <code>get/3</code>.</p>
+
+<p>And that&rsquo;s all there is to it! The heavy work is done by <code>Plug.Session</code> and <code>MyApp.Api.Sessions</code>. In essence, our custom store is just a way to bind the session plug with database.</p>
+
+<h2 id="step-two-configuration">Step two: configuration</h2>
+
+<p>We need to update <code>endpoint.ex</code>, because that&rsquo;s where the session plug is configured. We&rsquo;ll tell it to use our custom store and set the max age to 1 day:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="c1"># ...</span>
+
+<span class="n">max_age</span> <span class="o">=</span> <span class="mi">86_400</span>
+
+<span class="n">plug</span> <span class="nc">Plug.Session</span><span class="p">,</span>
+  <span class="ss">store</span><span class="p">:</span> <span class="nc">MyApp.SessionStore</span><span class="p">,</span>
+  <span class="ss">key</span><span class="p">:</span> <span class="s2">&#34;_myapp_sid&#34;</span><span class="p">,</span>
+  <span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">,</span>
+  <span class="c1"># Plug.Session reserves `max_age` key for itself,</span>
+  <span class="c1"># so the store has its own &#39;max_age&#39;.</span>
+  <span class="ss">store_max_age</span><span class="p">:</span> <span class="n">max_ag</span>
+  
+<span class="c1"># ...</span></code></pre></div>
+<p>The <code>key</code> config param is used to name the cookie in request headers (and subsequently in browser), for example:</p>
+
+<pre><code>set-cookie: _myapp_sid=bZsiztY6G+7UHr5BWMpWLVpUnr3paDTktFU/S1Jh5B1COqhaEyWaOuunrvJ/D8FvcMQzl1nw/z+1blhhtlFgAQ==; path=/; expires=Sun, 7 Apr 2019 11:28:31 GMT; max-age=86400; HttpOnly
+</code></pre>
+
+<p>Then there are two config params for max age. <code>max_age</code> is used internally by session plug and is unfortunately not exposed in options passed to the store. Therefore, we&rsquo;ve defined another config param, which won&rsquo;t be &lsquo;eaten&rsquo; by session plug.</p>
+
+<h2 id="that-s-all-folks">That&rsquo;s all folks</h2>
+
+<p>As you can see, it&rsquo;s very easy to implement a custom session store in Phoenix app. And for me personally, this is one of the best things about the framework: it&rsquo;s easy to extend it and the result is most of the time less than 100 lines of code.</p>
+]]></content>
+		</item>
 		
 		<item>
 			<title>Preloading data for React components</title>
