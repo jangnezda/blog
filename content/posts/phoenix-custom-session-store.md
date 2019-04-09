@@ -165,7 +165,7 @@ plug Plug.Session,
 # ...
 ```
 
-The `key` config param is used to name the cookie in request headers (and subsequently in browser), for example:
+The `key` config param is used to name the cookie in response headers (and subsequently in browser), for example:
 
 ```
 set-cookie: _myapp_sid=bZsiztY6G+7UHr5BWMpWLVpUnr3paDTktFU/S1Jh5B1COqhaEyWaOuunrvJ/D8FvcMQzl1nw/z+1blhhtlFgAQ==; path=/; expires=Sun, 7 Apr 2019 11:28:31 GMT; max-age=86400; HttpOnly
