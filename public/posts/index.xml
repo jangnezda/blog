@@ -6,8 +6,175 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Fri, 05 Apr 2019 19:56:59 +0200</lastBuildDate>
+		<lastBuildDate>Fri, 03 May 2019 19:18:44 +0200</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Simple Recurring Jobs in Phoenix Apps</title>
+			<link>https://blog.rebased.dev/posts/phoenix-recurring-job/</link>
+			<pubDate>Fri, 03 May 2019 19:18:44 +0200</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/phoenix-recurring-job/</guid>
+			<description>There is often a need to do some work repeatedly in any non-trivial application. Maybe send a daily report or purge unused resources. Let&amp;rsquo;s see how we can do that in a Phoenix app.
+It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurring jobs due to Elixir being a language that targets Erlang VM and therefore has access to lightweight concurrency with supervisors and child processes. In fact, let&amp;rsquo;s check the application.</description>
+			<content type="html"><![CDATA[
+
+<p>There is often a need to do some work repeatedly in any non-trivial application. Maybe send a daily report or purge unused resources. Let&rsquo;s see how we can do that in a Phoenix app.</p>
+
+<h2 id="it-s-all-erlang-underneath">It&rsquo;s all Erlang underneath</h2>
+
+<p>It is pretty straightforward to do recurring jobs due to Elixir being a language that targets Erlang VM and therefore has access to lightweight concurrency with  <a href="https://hexdocs.pm/elixir/Supervisor.html" target="_blank">supervisors</a> and child processes. In fact, let&rsquo;s check the <code>application.ex</code> file in a typical Phoenix app. This file is auto-generated when bootstrapping a new Pheonix app with <code>mix phx.new</code> command and is responsible for starting the app:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="n">do</span>
+  <span class="n">use</span> <span class="nc">Application</span>
+
+  <span class="n">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">children</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="nc">DemoApp.Repo</span>
+    <span class="p">]</span>
+
+    <span class="nc">Supervisor</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span>
+      <span class="n">children</span><span class="p">,</span>
+      <span class="ss">strategy</span><span class="p">:</span> <span class="ss">:one_for_one</span><span class="p">,</span>
+      <span class="ss">name</span><span class="p">:</span> <span class="nc">DemoApp.Supervisor</span>
+    <span class="p">)</span>
+  <span class="n">end</span>
+<span class="n">end</span></code></pre></div>
+<p>Ok, so our DemoApp creates a supervisor that starts child processes. In this example it&rsquo;s just one child, but there&rsquo;s nothing keeping us from having more. And that&rsquo;s exactly what we&rsquo;ll do to run custom jobs.</p>
+
+<p>Just a short note on supervisor strategies. A supervisor strategy instructs supervisor what to do when a child process dies. The one used in the example, <code>:one_for_one</code>, means that if a child process terminates, then that process is restarted. There are other strategies as well, like killing all children if one dies or doing nothing and so on, but for our use case <code>:one_for_one</code> is exactly what we want.</p>
+
+<h2 id="simple-job">Simple job</h2>
+
+<p>Let&rsquo;s do following:</p>
+
+<ol>
+<li>Implement our job as child process</li>
+<li>Schedule the work one minute after initialization.</li>
+<li>After work is done, schedule it again.</li>
+</ol>
+
+<p>Once we have our job, we just have to pass it to <code>children</code> list for the supervisor. Building upon the <a href="https://hexdocs.pm/elixir/Supervisor.html#module-examples" target="_blank">example</a> in Elixir docs our job could look like this:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="n">do</span>
+  <span class="n">use</span> <span class="nc">GenServer</span>
+
+  <span class="n">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+    <span class="nc">GenServer</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span><span class="n">__MODULE__</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="ss">name</span><span class="p">:</span> <span class="n">__MODULE__</span><span class="p">)</span>
+  <span class="n">end</span>
+
+  <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">schedule</span><span class="p">()</span>
+    
+    <span class="p">{</span><span class="ss">:ok</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
+  <span class="n">end</span>
+
+  <span class="n">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+    <span class="c1"># the actual work to be done</span>
+    <span class="nc">IO</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&#34;Running job ...&#34;</span><span class="p">)</span>
+    
+    <span class="c1"># work is done, let&#39;s schedule again</span>
+    <span class="n">schedule</span><span class="p">()</span>
+    
+    <span class="p">{</span><span class="ss">:noreply</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
+  <span class="n">end</span>
+  
+  <span class="n">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="n">do</span>
+    <span class="c1"># schedule after one minute</span>
+    <span class="nc">Process</span><span class="o">.</span><span class="n">send_after</span><span class="p">(</span><span class="n">self</span><span class="p">(),</span> <span class="ss">:work</span><span class="p">,</span> <span class="mi">60000</span><span class="p">)</span>
+  <span class="n">end</span>
+
+<span class="n">end</span></code></pre></div>
+<p>In essence, our Job is a process that waits for <code>:work</code> message to do its work. What we want is that <code>:work</code> message arrives once per 60 seconds and this is done in two steps:</p>
+
+<ol>
+<li>By calling <code>schedule/0</code> function during initialization.</li>
+<li>And by calling <code>schedule/0</code> every time after work is done.</li>
+</ol>
+
+<p>You may be thinking, &ldquo;This won&rsquo;t work properly. What if there&rsquo;s an error in <code>handle_info/2</code> function? We should catch it, otherwise the job won&rsquo;t be re-scheduled.&ldquo;. But that&rsquo;s in fact not necessary, because the supervisor will take care of restarting a failed child process. This keeps the code simple and is one of the benefits we get from Erlang&rsquo;s concurrency.</p>
+
+<p>Now that we have the Job implementation, we have to make sure it&rsquo;s started when the app starts:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="n">do</span>
+  <span class="n">use</span> <span class="nc">Application</span>
+
+  <span class="n">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">children</span> <span class="o">=</span> <span class="p">[</span>
+      <span class="nc">DemoApp.Repo</span><span class="p">,</span>
+      <span class="nc">DemoApp.Job</span>
+    <span class="p">]</span>
+
+    <span class="nc">Supervisor</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span>
+      <span class="n">children</span><span class="p">,</span>
+      <span class="ss">strategy</span><span class="p">:</span> <span class="ss">:one_for_one</span><span class="p">,</span>
+      <span class="ss">name</span><span class="p">:</span> <span class="nc">DemoApp.Supervisor</span>
+    <span class="p">)</span>
+  <span class="n">end</span>
+<span class="n">end</span></code></pre></div>
+<p>That&rsquo;s right, it&rsquo;s just one line added to the children array.</p>
+
+<h2 id="wait-it-s-not-that-simple">Wait, it&rsquo;s not that simple</h2>
+
+<p>It really is, but only in case your jobs don&rsquo;t require complex fallback logic. For example, it may not be desired that a job is just re-run if it fails or you&rsquo;d want that it&rsquo;s only retried couple of times before giving up. If that&rsquo;s the case, then you may want to look into third party dependencies such as <a href="https://hexdocs.pm/quantum/readme.html" target="_blank">Quantum</a> or <a href="https://github.com/edgurgel/verk" target="_blank">Verk</a>. Or implement this behaviour yourself, but be ready for a rabbit hole of job scheduling.</p>
+
+<h2 id="code-reuse">Code reuse</h2>
+
+<p>If you have many different jobs (well, more than one), then it&rsquo;s annoying to copy all that boilerplate for every job implementation. Ideally, the only two things we&rsquo;d want in a job is the time interval and the code to do the work. We can achieve this using Elixir <a href="https://elixir-lang.org/getting-started/meta/macros.html" target="_blank">macros</a>. Here&rsquo;s how such a job could look like:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.DemoJob</span> <span class="n">do</span>
+  <span class="n">use</span> <span class="nc">DemoApp.Job</span>
+
+  <span class="c1"># every 10 minutes</span>
+  <span class="na">@job_interval</span> <span class="mi">600</span>
+
+  <span class="n">def</span> <span class="n">get_interval</span><span class="p">(),</span> <span class="ss">do</span><span class="p">:</span> <span class="na">@job_interval</span>
+
+  <span class="n">def</span> <span class="n">work</span><span class="p">()</span> <span class="n">do</span>
+    <span class="nc">IO</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&#34;DemoJob working ...&#34;</span><span class="p">)</span>
+  <span class="n">end</span>
+<span class="n">end</span></code></pre></div>
+<p>The <code>use DemoApp.Job</code> line means that the DemoJob will use <code>Job</code> macro, which is composed mostly of the boilerplate we&rsquo;ve seen in the &lsquo;Simple job&rsquo; section:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="n">do</span>
+  <span class="na">@callback</span> <span class="n">work</span><span class="p">()</span> <span class="o">::</span> <span class="n">any</span>
+  <span class="na">@callback</span> <span class="n">get_interval</span><span class="p">()</span> <span class="o">::</span> <span class="nc">Integer</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>
+
+  <span class="n">defmacro</span> <span class="n">__using__</span><span class="p">(</span><span class="n">_params</span><span class="p">)</span> <span class="n">do</span>
+    <span class="n">quote</span> <span class="n">do</span>
+      <span class="na">@behaviour</span> <span class="nc">DemoApp.Job</span>
+
+      <span class="n">use</span> <span class="nc">GenServer</span>
+
+      <span class="n">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+        <span class="nc">GenServer</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span><span class="n">__MODULE__</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="ss">name</span><span class="p">:</span> <span class="n">__MODULE__</span><span class="p">)</span>
+      <span class="n">end</span>
+
+      <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+        <span class="n">schedule</span><span class="p">()</span>
+
+        <span class="p">{</span><span class="ss">:ok</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
+      <span class="n">end</span>
+
+      <span class="n">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+        <span class="n">work</span><span class="p">()</span>
+
+        <span class="n">schedule</span><span class="p">()</span>
+
+        <span class="p">{</span><span class="ss">:noreply</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
+      <span class="n">end</span>
+
+      <span class="n">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="n">do</span>
+        <span class="nc">Process</span><span class="o">.</span><span class="n">send_after</span><span class="p">(</span><span class="n">self</span><span class="p">(),</span> <span class="ss">:work</span><span class="p">,</span> <span class="n">get_interval</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
+      <span class="n">end</span>
+    <span class="n">end</span>
+  <span class="n">end</span>
+<span class="n">end</span></code></pre></div>
+<p>The <code>DemoApp.Job</code> module specifies two things:</p>
+
+<ol>
+<li>The <a href="https://elixir-lang.org/getting-started/typespecs-and-behaviours.html#behaviours" target="_blank">behaviour</a> with two callbacks. Behaviours are essentially the same as interfaces in some other languages, which means that other modules using this module will have to implement <code>work/0</code> and <code>get_interval/0</code> functions.</li>
+<li>The macro with the job boilerplate code. You can think of macros as text blocks that are copied verbatim to every module using the macro.</li>
+</ol>
+
+<p>Now any job implementation that uses <code>DemoApp.Job</code> module will be much shorter and in case we have to make changes to boilerplate code, we only have to do it in one place.</p>
+]]></content>
+		</item>
 		
 		<item>
 			<title>Custom Session Store in Phoenix App</title>
