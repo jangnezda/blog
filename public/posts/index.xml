@@ -6,8 +6,421 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Fri, 03 May 2019 19:18:44 +0200</lastBuildDate>
+		<lastBuildDate>Sat, 15 Jun 2019 19:57:50 +0200</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Using Jenkins Shared Libraries</title>
+			<link>https://blog.rebased.dev/posts/jenkins-shared-libraries/</link>
+			<pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/jenkins-shared-libraries/</guid>
+			<description>In recent months I&amp;rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with Jenkins. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the Jenkinsfile in each of the projects was similar, but not the same.</description>
+			<content type="html"><![CDATA[
+
+<p>In recent months I&rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with <a href="https://jenkins.io/" target="_blank">Jenkins</a>. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the <code>Jenkinsfile</code> in each of the projects was similar, but not the same. I wanted to find a way to reduce the size of <code>Jenkinsfile</code> and possibly remove related files (like kubernetes pod yaml file), because a lot of it repeated in each of the projects.</p>
+
+<p>In this post I&rsquo;ll look into <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/" target="_blank">Jenkins shared libraries</a>, which are super useful for reducing the repetition and boilerplate in Jenkinsfiles. The examples are based off pipelines to deploy to Openshift managed kubernetes cluster, but I did not go into specifics of either Openshift or kubernetes.</p>
+
+<h2 id="the-problem">The problem</h2>
+
+<p>The problem is all the repetition and boilerplate needed to integrate a project with Jenkins build server. Consider a <a href="https://jenkins.io/doc/book/pipeline/#declarative-versus-scripted-pipeline-syntax" target="_blank">declarative pipeline</a> that was used to build and test one of our Elixir projects (simplified for this blog post):</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">pipeline</span> <span class="o">{</span>
+  <span class="n">environment</span> <span class="o">{</span>
+    <span class="n">NAME</span> <span class="o">=</span> <span class="s1">&#39;project_name&#39;</span>
+    <span class="c1">// other env variables go here ...
+</span><span class="c1"></span>  <span class="o">}</span>
+
+  <span class="n">options</span> <span class="o">{</span>
+    <span class="n">disableConcurrentBuilds</span><span class="o">()</span>
+    <span class="n">timeout</span><span class="o">(</span><span class="nl">time:</span> <span class="mi">1</span><span class="o">,</span> <span class="nl">unit:</span> <span class="s1">&#39;HOURS&#39;</span><span class="o">)</span>
+    <span class="n">timestamps</span><span class="o">()</span>
+  <span class="o">}</span>
+  <span class="n">agent</span> <span class="o">{</span>
+    <span class="n">kubernetes</span> <span class="o">{</span>
+      <span class="n">label</span> <span class="s1">&#39;docker&#39;</span>
+      <span class="n">defaultContainer</span> <span class="s1">&#39;jnlp&#39;</span>
+      <span class="n">yamlFile</span> <span class="s1">&#39;build-pod.yaml&#39;</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+    
+  <span class="n">stages</span> <span class="o">{</span>
+    <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Build Image&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">steps</span> <span class="o">{</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;docker&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">buildImage</span><span class="o">(</span><span class="n">NAME</span><span class="o">)</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Run tests&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">steps</span> <span class="o">{</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">deployEphemeralDb</span><span class="o">(</span><span class="s1">&#39;postgresql-test&#39;</span><span class="o">,</span> <span class="s1">&#39;test&#39;</span><span class="o">)</span>
+        <span class="o">}</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;elixir&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">sh</span> <span class="s2">&#34;mix local.hex --force &amp;&amp; mix local.rebar --force &amp;&amp; mix deps.get&#34;</span>
+          <span class="n">sh</span> <span class="s2">&#34;MIX_ENV=test DATABASE_HOSTNAME=postgresql-test.${PROJ}.svc POSTGRESQL_USER=postgres POSTGRESQL_PASSWORD=postgres POSTGRESQL_DATABASE=test mix test&#34;</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="n">post</span> <span class="o">{</span>
+        <span class="n">always</span> <span class="o">{</span>
+          <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">destroyEphemeralDb</span><span class="o">(</span><span class="s1">&#39;postgresql-test&#39;</span><span class="o">)</span>
+          <span class="o">}</span>
+          <span class="n">junit</span> <span class="s2">&#34;_build/test/lib/project_name/test-junit-report.xml&#34;</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Push image&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">steps</span> <span class="o">{</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;docker&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">tagAndPushImage</span><span class="o">(</span><span class="n">NAME</span><span class="o">,</span> <span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Deploy&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">steps</span> <span class="o">{</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">deployPersistentDb</span><span class="o">(</span><span class="n">NAME</span><span class="o">,</span> <span class="s1">&#39;postgresql&#39;</span><span class="o">)</span>
+          <span class="n">deployApp</span><span class="o">(</span><span class="n">NAME</span><span class="o">,</span> <span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+    <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Seed DB&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">steps</span> <span class="o">{</span>
+        <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">runDistilleryJob</span><span class="o">(</span><span class="n">NAME</span><span class="o">,</span> <span class="s1">&#39;seed&#39;</span><span class="o">)</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+<p>Looks a lot, but essentially it tells Jenkins:</p>
+
+<ol>
+<li>That we will run our stages using kubernetes agent.</li>
+<li>That we want to build docker image of our project.</li>
+<li>Run some tests, which need a DB instance (postgres in our case).</li>
+<li>Push the image to registry if tests suceeded.</li>
+<li>Deploy the app with a Postgres database.</li>
+<li>Seed the database with some data.</li>
+</ol>
+
+<p>Most of the steps are implemented in separate functions (<code>buildImage</code>, <code>deployApp</code>, <code>deployPersistentDb</code>, &hellip;), to make reading the pipeline a bit easier. We can immediately see that some steps will be essentially the same for most projects: set up kubernetes agent, build image, push image, deploy app. Not just that, the whole pipeline could be replicated and the custom parts, like environment variables and testing step, provided by specific project. This can be done using Jenkins Shared Libraries.</p>
+
+<h2 id="shared-library">Shared library</h2>
+
+<p>So, what is a Jenkins Shared Library? It&rsquo;s a project with pre-defined structure that can be used in a Jenkinsfile. The language used is Groovy, which makes sense as Jenkinsfiles are also in Groovy.</p>
+
+<p>You can have common steps and pipelines defined in a shared library, then inside specific Jenkinsfile call those steps or whole pipelines. This sounds great and it is, but with one caveat: it&rsquo;s hardly usable for declarative pipelines. At this time, there are some <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#defining-declarative-pipelines" target="_blank">limitations</a> imposed by Jenkins, such as:</p>
+
+<ul>
+<li>one can&rsquo;t break up pipelines into different parts, then combine those parts in one pipeline,</li>
+<li>the pipeline has to be wholly defined in one function, so it&rsquo;s impossible to wrap it in other functions,</li>
+<li>one can&rsquo;t extract stages into separate functions.</li>
+</ul>
+
+<p>These limitations make it impossible to create generic pipelines. We&rsquo;ll have to use scripted pipelines instead. With those there aren&rsquo;t any limitations, so one can easily build generic stages/pipelines. Scripted pipelines are basically free-form Groovy and while they&rsquo;re powerful, it also means that you lose some safety compared to declarative pipelines. Additionally, Jenkins does some things automatically in case of declarative pipelines, like git check out of the project in the setup phase.</p>
+
+<p>With that in mind, let&rsquo;s see how our shared library approach could look like:</p>
+
+<ol>
+<li>The shared library should contain various resource files like the kubernetes pod yaml file (thus removing them from each of the projects).</li>
+<li>The shared library should have generalized pipelines for different kinds of projects, like Elixir and Typescript.</li>
+<li>The <code>Jenkinsfile</code> in a project should be quite short. In fact, it should only have information to use the shared library and specific environment variables.</li>
+</ol>
+
+<h2 id="implementation">Implementation</h2>
+
+<p>Let&rsquo;s dive into shared library project. In essence, a Jenkins shared library has three directories:</p>
+
+<pre><code>|
+`-- src          # Groovy sources/classes
+|
+`-- vars         # Groovy scripts exposed as variables
+|
+`-- resources    # Non-groovy files (xml, json, ...)
+</code></pre>
+
+<p>It may be a bit confusing to have <code>src</code> and <code>vars</code> both containing Groovy source files, but you can think of <code>vars</code> as a way to simplify the implementation - they are automatically exposed in <code>Jenkinsfile</code> as variables (essentially auto-created singletons). For our needs, we&rsquo;ll only use <code>vars</code> and <code>resources</code>.</p>
+
+<p>If you are deploying your projects in a kubernetes cluster, then the <code>resources</code> directory could contain yaml files for deploying pods, commands, etc.</p>
+
+<pre><code>|
+`-- resources
+  |
+  `-- com
+    |
+    `-- yourcompany
+      |
+      `-- jenkins
+        |
+        `-- build-pod.yaml
+        |
+        `-- postgresql-ephemeral.yaml
+        |
+        `-- persistent-volume.yaml
+        |
+        `-- ...
+</code></pre>
+
+<p>It is recommended to use Java-like package structure to avoid naming conflicts in the classpath. Now we will be able to use these two files in the common pipelines.</p>
+
+<p>Next, we&rsquo;ll put the pipelines and steps into <code>vars</code>. I suggest to split the code into multiple files:</p>
+
+<pre><code>|
+`-- vars
+  |
+  `-- pipelines.groovy
+  |
+  `-- stages.groovy
+  |
+  `-- utils.groovy
+  |
+  `-- ...
+</code></pre>
+
+<p>It&rsquo;s not necessary to do that, but it makes it easier to read and understand if all the logic isn&rsquo;t stuffed into one file. The scripts in <code>vars</code> will be auto-imported in other groovy files (including the Jenkinsfiles), so their functions can be called directly without additional imports, e.g. <code>utils.myFunction(...)</code>.</p>
+
+<p>The overarching goal is to make Jenkinsfiles short or in other words, without specific logic. This means that the shared library will have to take care of not just one pipeline (or use case), but more of them:</p>
+
+<ol>
+<li>shared library should be able to provide pipelines for different languages/frameworks,</li>
+<li>shared library should take care of different rules, such as QA vs production environment or similar, because those often mean that a build/deployment is slightly different.</li>
+</ol>
+
+<p>Let&rsquo;s look at <code>stages.groovy</code> and <code>pipelines.groovy</code>.</p>
+
+<h2 id="stages-groovy">stages.groovy</h2>
+
+<p>So stages should contain the common stages needed in pipelines. For example, building a Docker image. Additionally, they should be composable, so that for example it&rsquo;s possible to do something before or after each stage. That way, a pipeline can use a common stage even if it needs to do something additional in that stage.</p>
+
+<p>First, let&rsquo;s define a template function:</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+</span><span class="cm"> * Defines a stage template to reduce the boilerplate in actual stages.
+</span><span class="cm"> */</span>
+<span class="kt">def</span> <span class="nf">template</span><span class="o">(</span><span class="n">stageName</span><span class="o">,</span> <span class="n">containerName</span><span class="o">,</span> <span class="n">body</span><span class="o">,</span> <span class="n">before</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="n">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">stage</span><span class="o">(</span><span class="n">stageName</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">container</span><span class="o">(</span><span class="n">containerName</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">before</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">before</span><span class="o">()</span>
+      <span class="o">}</span>
+
+      <span class="n">body</span><span class="o">()</span>
+
+      <span class="k">if</span> <span class="o">(</span><span class="n">after</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">after</span><span class="o">()</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+<p>Essentially it&rsquo;s a stage wrapper that also supports before and after logic. <code>body</code>, <code>before</code> and <code>after</code> are expected to be functions/closures.</p>
+
+<p>Now we can define concrete stages using this template function:</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+</span><span class="cm"> * Builds docker image needed to run the app.
+</span><span class="cm"> */</span>
+<span class="kt">def</span> <span class="nf">buildImage</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">before</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="n">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">template</span><span class="o">(</span><span class="s1">&#39;Build images&#39;</span><span class="o">,</span> <span class="s1">&#39;docker&#39;</span><span class="o">,</span> <span class="o">{</span>
+    <span class="n">sh</span> <span class="s2">&#34;docker build -t ${context.name}:${context.env.CHANGE_ID} .&#34;</span>
+  <span class="o">},</span> <span class="n">before</span><span class="o">,</span> <span class="n">after</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="cm">/**
+</span><span class="cm"> * Pushes built image to registry.
+</span><span class="cm"> */</span>
+<span class="kt">def</span> <span class="nf">pushImage</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">before</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="n">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">template</span><span class="o">(</span><span class="s1">&#39;Push images&#39;</span><span class="o">,</span> <span class="s1">&#39;docker&#39;</span><span class="o">,</span> <span class="o">{</span>
+    <span class="n">utils</span><span class="o">.</span><span class="na">tagAndPushImage</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">name</span><span class="o">,</span> <span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span>
+  <span class="o">},</span> <span class="n">before</span><span class="o">,</span> <span class="n">after</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="s">//</span> <span class="n">add</span> <span class="n">other</span> <span class="n">stages</span> <span class="k">as</span> <span class="n">needed</span> <span class="o">...</span></code></pre></div>
+<h2 id="pipelines-groovy">pipelines.groovy</h2>
+
+<p>The <code>pipelines.groovy</code> will contain pipelines, which will be assembled from a number of stages (preferrably defined in <code>stages.groovy</code>). It is common to have slightly different pipelines in case it&rsquo;s a <code>master</code> branch or <code>PR</code> branch. For example, you may deploy Postgres without permanent storage for <code>PR</code> deployment and with permanent storage for staging (<code>develop</code> branch). Let&rsquo;s start with a template function and basic pipeline/wrapper for kubernetes deployments:</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="kn">import</span> <span class="nn">groovy.transform.Field</span>
+
+<span class="c1">// Unfortunately, enums can&#39;t be exported/used in other modules,
+</span><span class="c1">// so we have to use the map.
+</span><span class="c1"></span><span class="nd">@Field</span> <span class="n">Type</span> <span class="o">=</span> <span class="o">[</span>
+  <span class="nl">PullRequest:</span> <span class="s1">&#39;PullRequest&#39;</span><span class="o">,</span>
+  <span class="nl">DevQA:</span> <span class="s1">&#39;DevQA&#39;</span><span class="o">,</span>
+  <span class="nl">Production:</span> <span class="s1">&#39;Production&#39;</span>
+<span class="o">]</span>
+
+<span class="kt">def</span> <span class="nf">template</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kt">def</span> <span class="n">label</span> <span class="o">=</span> <span class="n">UUID</span><span class="o">.</span><span class="na">randomUUID</span><span class="o">().</span><span class="na">toString</span><span class="o">()</span>
+
+  <span class="k">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">BRANCH_NAME</span> <span class="o">==</span> <span class="s1">&#39;master&#39;</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// production
+</span><span class="c1"></span>    <span class="n">kubernetesPipeline</span><span class="o">(</span><span class="n">Type</span><span class="o">.</span><span class="na">Production</span><span class="o">,</span> <span class="n">label</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">BRANCH_NAME</span> <span class="o">==</span> <span class="s1">&#39;develop&#39;</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// staging
+</span><span class="c1"></span>    <span class="n">kubernetesPipeline</span><span class="o">(</span><span class="n">Type</span><span class="o">.</span><span class="na">DevQA</span><span class="o">,</span> <span class="n">label</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// pull request
+</span><span class="c1"></span>    <span class="c1">//
+</span><span class="c1"></span>    <span class="c1">// You may have some additional logic here to decide
+</span><span class="c1"></span>    <span class="c1">// when to deploy a PR and when not - for example,
+</span><span class="c1"></span>    <span class="c1">// here we&#39;ll only deploy if branch name ends with `-deploy`
+</span><span class="c1"></span>    <span class="k">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">CHANGE_BRANCH</span> <span class="o">==~</span> <span class="s">/^.*?-deploy$/</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">kubernetesPipeline</span><span class="o">(</span><span class="n">Type</span><span class="o">.</span><span class="na">PullRequest</span><span class="o">,</span> <span class="n">label</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="n">emptyPipeline</span><span class="o">(</span><span class="s1">&#39;This PR branch is not deployable. Skipping build.&#39;</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="n">emptyPipeline</span><span class="o">(</span><span class="s1">&#39;Looks like this is neither PR branch nor develop/master branch. Skipping build.&#39;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="kt">def</span> <span class="nf">kubernetesPipeline</span><span class="o">(</span><span class="n">type</span><span class="o">,</span> <span class="n">nodeId</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">stages</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">podTemplate</span><span class="o">(</span><span class="nl">label:</span> <span class="n">nodeId</span><span class="o">,</span> <span class="nl">yaml:</span> <span class="n">libraryResource</span><span class="o">(</span><span class="s1">&#39;com/yourcompany/jenkins/build-pod.yaml&#39;</span><span class="o">))</span> <span class="o">{</span>
+    <span class="n">node</span><span class="o">(</span><span class="n">nodeId</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">checkout</span> <span class="n">scm</span>
+
+      <span class="kt">def</span> <span class="n">context</span> <span class="o">=</span> <span class="o">[</span>
+        <span class="nl">type:</span> <span class="n">type</span><span class="o">,</span>
+        <span class="nl">env:</span> <span class="n">env</span><span class="o">,</span>
+        <span class="nl">name:</span> <span class="n">name</span><span class="o">,</span>
+        <span class="nl">project:</span> <span class="n">utils</span><span class="o">.</span><span class="na">getProjectName</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">),</span>
+        <span class="nl">dockerfileStages:</span> <span class="n">dockerfileStages</span><span class="o">,</span>
+        <span class="nl">devClusterDomain:</span> <span class="n">clusterDomain</span>
+      <span class="o">]</span>
+
+      <span class="n">echo</span> <span class="s2">&#34;Starting ${type} pipeline&#34;</span>
+
+      <span class="n">stages</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>  
+<span class="o">}</span>
+
+<span class="kt">def</span> <span class="nf">emptyPipeline</span><span class="o">(</span><span class="n">message</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Skipped build&#39;</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">echo</span> <span class="n">message</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+<p>Ok, so we&rsquo;ve defined some more building blocks. Let&rsquo;s see how this can be used for a more concrete pipeline:</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+</span><span class="cm"> * Defines a pipeline for Elixir/Phoenix projects.
+</span><span class="cm"> *
+</span><span class="cm"> * @param name the project name
+</span><span class="cm"> * @param env map of environment params
+</span><span class="cm"> * @param apps names of the apps in Phoenix umbrella project
+</span><span class="cm"> * @param customEnvVars a map of custom env variables
+</span><span class="cm"> */</span>
+<span class="kt">def</span> <span class="nf">elixir</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">apps</span><span class="o">,</span> <span class="n">customEnvVars</span><span class="o">)</span> <span class="o">{</span>
+  <span class="kt">def</span> <span class="n">pipelineStages</span> <span class="o">=</span> <span class="o">{</span> <span class="n">context</span> <span class="o">-&gt;</span>
+    <span class="n">stages</span><span class="o">.</span><span class="na">buildImage</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+    <span class="n">stages</span><span class="o">.</span><span class="na">createProject</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+
+    <span class="n">runTests</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">apps</span><span class="o">,</span> <span class="n">customEnvVars</span><span class="o">)</span>
+
+    <span class="n">stages</span><span class="o">.</span><span class="na">pushImage</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+    
+    <span class="k">if</span> <span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">type</span> <span class="o">==</span> <span class="n">pipelines</span><span class="o">.</span><span class="na">Type</span><span class="o">.</span><span class="na">PullRequest</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">stages</span><span class="o">.</span><span class="na">deployAppWithEphemeralDb</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+      <span class="n">stages</span><span class="o">.</span><span class="na">verifyDeployment</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+      <span class="n">migrateDb</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+      <span class="n">seedDb</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="n">stages</span><span class="o">.</span><span class="na">deployAppWithPersistentDb</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+      <span class="n">stages</span><span class="o">.</span><span class="na">verifyDeployment</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+      <span class="n">migrateDb</span><span class="o">(</span><span class="n">context</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="n">pipelines</span><span class="o">.</span><span class="na">template</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="kt">def</span> <span class="nf">runTests</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">apps</span><span class="o">,</span> <span class="n">customVars</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Run tests&#39;</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="n">utils</span><span class="o">.</span><span class="na">deployEphemeralDb</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">project</span><span class="o">,</span> <span class="s1">&#39;postgresql-test&#39;</span><span class="o">,</span> <span class="s1">&#39;test&#39;</span><span class="o">)</span>
+      <span class="n">sh</span> <span class="s2">&#34;oc rollout status dc postgresql-test -w -n ${context.project}&#34;</span>
+      <span class="n">sh</span> <span class="s2">&#34;oc adm pod-network join-projects --to=${context.project} openshift-build&#34;</span>
+    <span class="o">}</span>
+
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">container</span><span class="o">(</span><span class="s1">&#39;elixir&#39;</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">sh</span> <span class="s2">&#34;mix local.hex --force &amp;&amp; mix local.rebar --force &amp;&amp; mix deps.get&#34;</span>
+        <span class="n">sh</span> <span class="s2">&#34;mix credo&#34;</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="s2">&#34;MIX_ENV=test &#34;</span> <span class="o">+</span>
+                <span class="s2">&#34;DATABASE_HOSTNAME=postgresql-test.${context.project} &#34;</span> <span class="o">+</span>
+                <span class="s2">&#34;POSTGRESQL_USER=postgres &#34;</span> <span class="o">+</span>
+                <span class="s2">&#34;POSTGRESQL_PASSWORD=postgres &#34;</span> <span class="o">+</span>
+                <span class="s2">&#34;POSTGRESQL_DATABASE=test &#34;</span> <span class="o">+</span>
+                <span class="s2">&#34;HOSTNAME=localhost &#34;</span>
+
+        <span class="k">if</span> <span class="o">(</span><span class="n">customVars</span> <span class="o">&amp;&amp;</span> <span class="n">customVars</span><span class="o">.</span><span class="na">size</span><span class="o">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">customVars</span><span class="o">.</span><span class="na">each</span> <span class="o">{</span>
+            <span class="n">params</span> <span class="o">+=</span> <span class="s2">&#34;${it} &#34;</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+
+        <span class="n">sh</span> <span class="s2">&#34;${params} mix test&#34;</span>
+
+        <span class="n">apps</span><span class="o">.</span><span class="na">each</span> <span class="o">{</span>
+          <span class="n">junit</span> <span class="s2">&#34;_build/test/lib/${it}/test-junit-report.xml&#34;</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+      <span class="n">container</span><span class="o">(</span><span class="s1">&#39;openshift&#39;</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">utils</span><span class="o">.</span><span class="na">destroyEphemeralDb</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="na">project</span><span class="o">,</span> <span class="s1">&#39;postgresql-test&#39;</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span></code></pre></div>
+<p>Alright, so that&rsquo;s quite a few things going on. We&rsquo;ve defined an elixir pipeline as a closure that runs some stages and fed that closure into template pipeline. As an example, I&rsquo;ve specified <code>runTests</code> stage as a completely custom Groovy code block and used it as part of elixir pipeline.</p>
+
+<p>In similar manner we could define a pipeline for React/Typescript project and so on.</p>
+
+<h2 id="projects-using-the-shared-library">Projects using the shared library</h2>
+
+<p>The <code>Jenkinsfile</code> in each of the projects can now be much shorter. Assuming we have our shared library in Github with the name <code>demo-library</code>, then the Jenkinsfile could be this short:</p>
+<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">library</span><span class="o">(</span>
+  <span class="nl">identifier:</span> <span class="s2">&#34;demo-library@master&#34;</span><span class="o">,</span>
+  <span class="nl">retriever:</span> <span class="n">modernSCM</span><span class="o">(</span>
+    <span class="o">[</span>
+      <span class="n">$class</span><span class="o">:</span> <span class="s1">&#39;GitSCMSource&#39;</span><span class="o">,</span>
+      <span class="nl">remote:</span> <span class="s1">&#39;https://github.com/your-company/demo-library.git&#39;</span><span class="o">,</span>
+      <span class="nl">credentialsId:</span> <span class="s1">&#39;github&#39;</span>
+    <span class="o">]</span>
+  <span class="o">)</span>
+<span class="o">)</span>
+
+<span class="n">pipelines</span><span class="o">.</span><span class="na">elixir</span><span class="o">(</span>
+  <span class="s1">&#39;project_name&#39;</span><span class="o">,</span>
+  <span class="n">env</span><span class="o">,</span> <span class="c1">// &#39;env&#39; here is the Jenkins&#39; environment
+</span><span class="c1"></span>  <span class="o">[</span><span class="s1">&#39;my_app&#39;</span><span class="o">,</span> <span class="s1">&#39;my_app_web&#39;</span><span class="o">],</span>
+  <span class="o">[</span>
+    <span class="nl">CUSTOM_VAR1:</span> <span class="s1">&#39;...&#39;</span><span class="o">,</span>
+    <span class="nl">CUSTOM_VAR2:</span> <span class="s1">&#39;...&#39;</span><span class="o">,</span>
+  <span class="o">]</span>
+<span class="o">)</span></code></pre></div>
+<p>Ok, so this Jenkinsfile does two things:</p>
+
+<ol>
+<li>Loads a shared library from a github repo (the <code>credentialsId</code> you can find in your Jenkins settings by going to <code>https://jenkins.your-company.com/credentials/</code> assuming you&rsquo;ve setup Github integration int  Jenkins). Once the shared library is loaded, then its exported functions can be used without further imports or similar mechanisms.</li>
+<li>Invokes <code>pipelines.elixir(...)</code> with the project&rsquo;s name and Jenkins environment.</li>
+</ol>
+
+<blockquote>
+<p>Note that you can also import a shared library <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#using-libraries" target="_blank">globally</a> in Jenkins configuration, then just alias it in the Jenkinsfile like so: <code>@Library('demo-library') _</code>.</p>
+</blockquote>
+
+<p>Finally, we should remove yaml files or other resources, because they are now part of the shared library.</p>
+
+<h2 id="should-i-use-jenkins-shared-libraries">Should I use Jenkins Shared Libraries?</h2>
+
+<p>I think that if you have multiple projects built, tested and deployed by Jenkins, then shared libraries provide a very flexible way to deal with repetition and boilerplate. But we have to look at cons, too, as is the case with any abstraction. To me, the single biggest con is that looking at a project&rsquo;s Jenkinsfile, one has no idea what is actually happening without looking at the code     in the shared library project. But to me the ability to fix/change/enhance continuous integration and delivery at one place for all projects outweighs the blackbox-iness of this approach.</p>
+]]></content>
+		</item>
 		
 		<item>
 			<title>Simple Recurring Jobs in Phoenix Apps</title>

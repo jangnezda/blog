@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Groovy on rebased</title>
+    <link>https://blog.rebased.dev/tags/groovy/</link>
+    <description>Recent content in Groovy on rebased</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 15 Jun 2019 19:57:50 +0200</lastBuildDate>
+    
+	<atom:link href="https://blog.rebased.dev/tags/groovy/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Using Jenkins Shared Libraries</title>
+      <link>https://blog.rebased.dev/posts/jenkins-shared-libraries/</link>
+      <pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
+      
+      <guid>https://blog.rebased.dev/posts/jenkins-shared-libraries/</guid>
+      <description>In recent months I&amp;rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with Jenkins. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the Jenkinsfile in each of the projects was similar, but not the same.</description>
+    </item>
+    
+  </channel>
+</rss>
