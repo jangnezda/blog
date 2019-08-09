@@ -6,8 +6,187 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Sat, 15 Jun 2019 19:57:50 +0200</lastBuildDate>
+		<lastBuildDate>Thu, 08 Aug 2019 18:53:37 +0200</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Upgrading Phoenix projects to latest Elixir</title>
+			<link>https://blog.rebased.dev/posts/upgrade-elixir-1.9/</link>
+			<pubDate>Thu, 08 Aug 2019 18:53:37 +0200</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/upgrade-elixir-1.9/</guid>
+			<description>Elixir 1.9 has been released about a month ago. This release is important, because of two things:
+ It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
+ As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned.</description>
+			<content type="html"><![CDATA[
+
+<p>Elixir 1.9 has been <a href="https://elixir-lang.org/blog/2019/06/24/elixir-v1-9-0-released/" target="_blank">released</a> about a month ago. This release is important, because of two things:</p>
+
+<ul>
+<li>It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.</li>
+
+<li><p>According to authors, there are no plans for new features to the language:</p>
+
+<blockquote>
+<p>As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned. I know for certain some will consider this fact the most excing part of this announcement!</p>
+</blockquote>
+
+<p>This means a couple of things. Firstly, any further upgrades should be painless. And secondly, a project using Elixir 1.9 can be reasonably sure that it has access to all features for the foreseeable future.</p></li>
+</ul>
+
+<p>This spurred me to upgrade all our Elixir projects to 1.9 and I&rsquo;ve also decided to upgrade Phoenix at the same time to the <a href="https://github.com/phoenixframework/phoenix/blob/v1.4.9/CHANGELOG.md" target="_blank">latest version</a> (1.4.9). Below is a list of problems that you may encounter and/or recommendations if you decide to upgrade as well:</p>
+
+<h3 id="1-erlang-compilation-error">1. Erlang compilation error</h3>
+
+<p>We&rsquo;re using <a href="https://github.com/asdf-vm/asdf" target="_blank">asdf</a> and upgrading meant changing <code>.tool-versions</code> file to new Erlang/OTP and Elixir versions:</p>
+
+<pre><code>erlang 22.0.7
+elixir 1.9.1-otp-22
+</code></pre>
+
+<p>and running <code>asdf install</code> in the project directory. Unfortunately, compilation of new Erlang failed on my laptop with &lsquo;missing separator&rsquo; error as outlined in <a href="https://github.com/asdf-vm/asdf-erlang/issues/100" target="_blank">this issue</a>. To fix it, I had to remove and add Erlang plugin:</p>
+
+<pre><code>asdf plugin-remove erlang
+asdf plugin-add erlang
+</code></pre>
+
+<p>Then run <code>asdf install</code> again and it worked.</p>
+
+<h3 id="2-config-files">2. Config files</h3>
+
+<p>All config files in an umbrella app are now in the top-level <code>config</code> directory. If you have any libraries, plugs, etc. configs that have configuration depend on paths, then the app may fail unless those paths are updated.</p>
+
+<h3 id="3-bureaucrat">3. Bureaucrat</h3>
+
+<p>Bureaucrat is a tool to generate API documentation. After upgrading Phoenix to 1.4.9, it failed to generate the docs due to following error:</p>
+
+<pre><code>[error] GenServer #PID&lt;0.595.0&gt; terminating
+** (Protocol.UndefinedError) protocol Enumerable not implemented for nil of type Atom. This protocol is implemented for the following type(s): Ecto.Adapters.SQL.Stream, Postgrex.Stream, DBConnection.Stream, DBConnection.PrepareStream, Timex.Interval, HashSet, Range, Map, Function, List, Stream, Date.Range, HashDict, GenEvent.Stream, MapSet, File.Stream, IO.Stream
+    (elixir) lib/enum.ex:1: Enumerable.impl_for!/1
+    (elixir) lib/enum.ex:141: Enumerable.reduce/3
+    (elixir) lib/enum.ex:3023: Enum.each/2
+    (elixir) lib/enum.ex:789: anonymous fn/3 in Enum.each/2
+    (stdlib) maps.erl:232: :maps.fold_1/3
+    (elixir) lib/enum.ex:1964: Enum.each/2
+    (bureaucrat) lib/bureaucrat/swagger_slate_markdown_writer.ex:238: Bureaucrat.SwaggerSlateMarkdownWriter.write_operations_for_tag/4
+    (elixir) lib/enum.ex:783: Enum.&quot;-each/2-lists^foreach/1-0-&quot;/2
+    (elixir) lib/enum.ex:783: Enum.each/2
+    (elixir) lib/enum.ex:1340: anonymous fn/3 in Enum.map/2
+    (stdlib) maps.erl:232: :maps.fold_1/3
+    (elixir) lib/enum.ex:1964: Enum.map/2
+    (bureaucrat) lib/bureaucrat/formatter.ex:10: Bureaucrat.Formatter.handle_cast/2
+    (stdlib) gen_server.erl:637: :gen_server.try_dispatch/4
+    (stdlib) gen_server.erl:711: :gen_server.handle_msg/6
+    (stdlib) proc_lib.erl:249: :proc_lib.init_p_do_apply/3
+</code></pre>
+
+<p>The root problem is in <code>phoenix_swagger</code> library that hasn&rsquo;t been updated yet to work with latest Phoenix versions. Because of it, the swagger file is generated without routes and so on, which causes <code>Bureaucrat.SwaggerSlateMarkdownWriter</code> module to fail.</p>
+
+<p>The <code>phoenix_swagger</code> authors have already fixed this issue in master branch, but haven&rsquo;t yet published the new package to Hex registry. Check the <a href="https://github.com/xerions/phoenix_swagger/issues/232" target="_blank">github issue</a> for more information. The temporary solution is to point your <code>mix.exs</code> to master branch instead:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">defp</span> <span class="n">deps</span> <span class="n">do</span>
+    <span class="p">[</span>
+      <span class="p">{</span><span class="ss">:phoenix</span><span class="p">,</span> <span class="s2">&#34;~&gt; 1.4.9&#34;</span><span class="p">},</span>
+      <span class="p">{</span><span class="ss">:phoenix_swagger</span><span class="p">,</span> <span class="ss">github</span><span class="p">:</span> <span class="s2">&#34;xerions/phoenix_swagger&#34;</span><span class="p">,</span> <span class="ss">branch</span><span class="p">:</span> <span class="s2">&#34;master&#34;</span><span class="p">},</span>
+      <span class="n">...</span>
+    <span class="p">]</span>
+  <span class="n">end</span></code></pre></div>
+<h3 id="4-releases">4. Releases</h3>
+
+<p>Elixir 1.9 now has built-in <a href="https://hexdocs.pm/mix/Mix.Tasks.Release.html" target="_blank">releases</a> functionality. It is similar to what Distillery was, but there are some differencies. Be sure to read the documentation to understand those differencies. Some observations:</p>
+
+<ol>
+<li><p>There are <code>vm.args.eex</code> and <code>env.sh.eex</code> that replace <code>vm.args</code>. This split is meant to clearly move env vars like erlang cookie and node name out of <code>vm.args</code>, which should only be used to erlvang vm-specific settings (like kernel options and such).</p></li>
+
+<li><p>Runtime env variables finally work in a sane way. You define them in <code>config/releases.exs</code>:</p>
+<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">import</span> <span class="nc">Config</span>
+
+<span class="n">config</span> <span class="ss">:my_app</span><span class="p">,</span> <span class="nc">MyApp.Repo</span><span class="p">,</span>
+  <span class="ss">username</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_USERNAME&#34;</span><span class="p">),</span>
+  <span class="ss">password</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_PASSWORD&#34;</span><span class="p">)</span>
+
+<span class="n">...</span></code></pre></div>
+<p>Note that import line does not use Mix&rsquo;s Config, because Mix is not available within app release. The variables defined in <code>config/releases.exs</code> will override those in <code>config/prod.exs</code> when running a release.</p></li>
+
+<li><p>There is no notion of commands that were used in Distillery to define custom script commands (most commonly to migrate/seed database after deploy). Instead, you have to add a custom release step that copies your scripts to realease&rsquo;s <code>/bin</code> directory:</p>
+
+<ol>
+<li><p>Make sure to have your custom scripts in <code>./rel/bin</code>.</p>
+
+<p>For example, a <code>./rel/bin/migrate.sh</code> could look like:</p>
+
+<pre><code>#!/bin/sh
+
+CURR_DIR=`dirname &quot;$0&quot;`
+
+$CURR_DIR/myapp eval &quot;MyApp.ReleaseTasks.migrate&quot;
+</code></pre></li>
+
+<li><p>Then in <code>mix.exs</code>:</p>
+
+<pre><code>def project do
+  [
+    ...
+
+    releases: [
+      myapp: [
+        include_executables_for: [:unix],
+        applications: [
+          myapp_web: :permanent
+        ],
+        steps: [:assemble, &amp;copy_bin_files/1]
+      ]
+    ],
+        
+    ...
+  ]
+end
+    
+defp copy_bin_files(release) do
+  File.cp_r(&quot;rel/bin&quot;, Path.join(release.path, &quot;bin&quot;))
+  release
+end
+</code></pre></li>
+</ol></li>
+</ol>
+
+<h3 id="5-distillery">5. Distillery</h3>
+
+<p>Distillery is not needed anymore, but if you still need it, remember that mix commands have been renamed: <code>mix release</code> -&gt; <code>mix distillery.release</code>, etc.</p>
+
+<h3 id="6-credo">6. Credo</h3>
+
+<p>If you are using <a href="https://github.com/rrrene/credo" target="_blank">Credo</a>, upgrade it as well to 1.1.2+, because it has updated rule for Elixir 1.9.</p>
+
+<h3 id="7-docker">7. Docker</h3>
+
+<p>Don&rsquo;t forget to update the <code>Dockerfile</code> as well, if you are using Docker. IF you are using builder and runner stages, then you may update like this:</p>
+
+<ol>
+<li><p>Builder:</p>
+
+<pre><code>FROM elixir:1.9.0-alpine AS builder
+
+RUN apk update &amp;&amp; \
+    apk add --no-cache \
+      gcc \
+      git \
+      make \
+      musl-dev
+...
+</code></pre></li>
+
+<li><p>Runner:</p>
+
+<pre><code>FROM alpine:3.9 AS runner
+RUN apk add -U bash libssl1.1
+COPY --from=builder /app/_build/prod/rel/my_app /app
+...
+</code></pre>
+
+<p>Note that the runner stage builds from Alpine 3.9. It&rsquo;s common mistake to leave it at Alpine 3.8, but the app won&rsquo;t run properly, because <code>elixir:1.9.0-alpine</code> builds upon Alpine 3.9.</p></li>
+</ol>
+]]></content>
+		</item>
 		
 		<item>
 			<title>Using Jenkins Shared Libraries</title>
