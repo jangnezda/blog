@@ -9,29 +9,28 @@
 	<meta name="msapplication-TileColor" content="#494f5c">
 <meta itemprop="name" content="Upgrading Phoenix projects to latest Elixir">
 <meta itemprop="description" content="Elixir 1.9 has been released about a month ago. This release is important, because of two things:
- It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
- As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned.">
-
-
-<meta itemprop="datePublished" content="2019-08-08T18:53:37&#43;02:00" />
-<meta itemprop="dateModified" content="2019-08-08T18:53:37&#43;02:00" />
+  It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.
+  According to authors, there are no plans for new features to the language:
+ As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned."><meta itemprop="datePublished" content="2019-08-08T18:53:37+02:00" />
+<meta itemprop="dateModified" content="2019-08-08T18:53:37+02:00" />
 <meta itemprop="wordCount" content="864">
-
-
-
-<meta itemprop="keywords" content="elixir,phoenix," />
-<meta property="og:title" content="Upgrading Phoenix projects to latest Elixir" />
+<meta itemprop="keywords" content="elixir,phoenix," /><meta property="og:title" content="Upgrading Phoenix projects to latest Elixir" />
 <meta property="og:description" content="Elixir 1.9 has been released about a month ago. This release is important, because of two things:
- It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
+  It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.
+  According to authors, there are no plans for new features to the language:
  As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned." />
 <meta property="og:type" content="article" />
-<meta property="og:url" content="https://blog.rebased.dev/posts/upgrade-elixir-1.9/" /><meta property="article:published_time" content="2019-08-08T18:53:37&#43;02:00"/>
-<meta property="article:modified_time" content="2019-08-08T18:53:37&#43;02:00"/>
+<meta property="og:url" content="https://blog.rebased.dev/posts/upgrade-elixir-1.9/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2019-08-08T18:53:37+02:00" />
+<meta property="article:modified_time" content="2019-08-08T18:53:37+02:00" />
+
 <meta name="twitter:card" content="summary"/>
 <meta name="twitter:title" content="Upgrading Phoenix projects to latest Elixir"/>
 <meta name="twitter:description" content="Elixir 1.9 has been released about a month ago. This release is important, because of two things:
- It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
+  It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.
+  According to authors, there are no plans for new features to the language:
  As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned."/>
+
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -40,24 +39,26 @@
 	<link rel="shortcut icon" href="/favicon.ico">
 
 	<title>Upgrading Phoenix projects to latest Elixir</title>
-	<link rel="stylesheet" href="https://blog.rebased.dev/css/style.min.9a30741782203507f3d35fe9cefabad487c72fc82dfbdf59121759fc2fa52f92.css" integrity="sha256-mjB0F4IgNQfz01/pzvq61IfHL8gt+99ZEhdZ/C+lL5I=">
+	<link rel="stylesheet" href="https://blog.rebased.dev/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
 	
 </head>
 
 <body id="page">
 	
-	<header id="site-header" class="animated slideInUp faster">
+	<header id="site-header" class="animated slideInUp">
 		<div class="hdr-wrapper section-inner">
 			<div class="hdr-left">
 				<div class="site-branding">
 					<a href="https://blog.rebased.dev/">rebased</a>
 				</div>
 				<nav class="site-nav hide-in-mobile">
-					<a href="https://blog.rebased.dev/posts/">Posts</a>
+					
+				<a href="https://blog.rebased.dev/posts/">Posts</a>
+
 				</nav>
 			</div>
 			<div class="hdr-right hdr-icons">
-				<span class="hdr-social hide-in-mobile"><a href="https://twitter.com/jangnezda" target="_blank" rel="noopener" title="Twitter"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-twitter"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg></a><a href="https://github.com/jangnezda" target="_blank" rel="noopener" title="Github"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-github"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+				<span class="hdr-social hide-in-mobile"><a href="https://twitter.com/jangnezda" target="_blank" rel="noopener me" title="Twitter"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg></a><a href="https://github.com/jangnezda" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
 			</div>
 		</div>
 	</header>
@@ -75,49 +76,33 @@
 				<h1>Upgrading Phoenix projects to latest Elixir</h1>
 			</header>
 			<div class="content">
-				
-
-<p>Elixir 1.9 has been <a href="https://elixir-lang.org/blog/2019/06/24/elixir-v1-9-0-released/" target="_blank">released</a> about a month ago. This release is important, because of two things:</p>
-
+				<p>Elixir 1.9 has been <a href="https://elixir-lang.org/blog/2019/06/24/elixir-v1-9-0-released/">released</a> about a month ago. This release is important, because of two things:</p>
 <ul>
-<li>It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.</li>
-
-<li><p>According to authors, there are no plans for new features to the language:</p>
-
+<li>
+<p>It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.</p>
+</li>
+<li>
+<p>According to authors, there are no plans for new features to the language:</p>
 <blockquote>
 <p>As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned. I know for certain some will consider this fact the most excing part of this announcement!</p>
 </blockquote>
-
-<p>This means a couple of things. Firstly, any further upgrades should be painless. And secondly, a project using Elixir 1.9 can be reasonably sure that it has access to all features for the foreseeable future.</p></li>
+<p>This means a couple of things. Firstly, any further upgrades should be painless. And secondly, a project using Elixir 1.9 can be reasonably sure that it has access to all features for the foreseeable future.</p>
+</li>
 </ul>
-
-<p>This spurred me to upgrade all our Elixir projects to 1.9 and I&rsquo;ve also decided to upgrade Phoenix at the same time to the <a href="https://github.com/phoenixframework/phoenix/blob/v1.4.9/CHANGELOG.md" target="_blank">latest version</a> (1.4.9). Below is a list of problems that you may encounter and/or recommendations if you decide to upgrade as well:</p>
-
-<h3 id="1-erlang-compilation-error">1. Erlang compilation error</h3>
-
-<p>We&rsquo;re using <a href="https://github.com/asdf-vm/asdf" target="_blank">asdf</a> and upgrading meant changing <code>.tool-versions</code> file to new Erlang/OTP and Elixir versions:</p>
-
-<pre><code>erlang 22.0.7
+<p>This spurred me to upgrade all our Elixir projects to 1.9 and I&rsquo;ve also decided to upgrade Phoenix at the same time to the <a href="https://github.com/phoenixframework/phoenix/blob/v1.4.9/CHANGELOG.md">latest version</a> (1.4.9). Below is a list of problems that you may encounter and/or recommendations if you decide to upgrade as well:</p>
+<h3 id="1-erlang-compilation-error">1. Erlang compilation error<a href="#1-erlang-compilation-error" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>We&rsquo;re using <a href="https://github.com/asdf-vm/asdf">asdf</a> and upgrading meant changing <code>.tool-versions</code> file to new Erlang/OTP and Elixir versions:</p>
+<pre tabindex="0"><code>erlang 22.0.7
 elixir 1.9.1-otp-22
-</code></pre>
-
-<p>and running <code>asdf install</code> in the project directory. Unfortunately, compilation of new Erlang failed on my laptop with &lsquo;missing separator&rsquo; error as outlined in <a href="https://github.com/asdf-vm/asdf-erlang/issues/100" target="_blank">this issue</a>. To fix it, I had to remove and add Erlang plugin:</p>
-
-<pre><code>asdf plugin-remove erlang
+</code></pre><p>and running <code>asdf install</code> in the project directory. Unfortunately, compilation of new Erlang failed on my laptop with &lsquo;missing separator&rsquo; error as outlined in <a href="https://github.com/asdf-vm/asdf-erlang/issues/100">this issue</a>. To fix it, I had to remove and add Erlang plugin:</p>
+<pre tabindex="0"><code>asdf plugin-remove erlang
 asdf plugin-add erlang
-</code></pre>
-
-<p>Then run <code>asdf install</code> again and it worked.</p>
-
-<h3 id="2-config-files">2. Config files</h3>
-
+</code></pre><p>Then run <code>asdf install</code> again and it worked.</p>
+<h3 id="2-config-files">2. Config files<a href="#2-config-files" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 <p>All config files in an umbrella app are now in the top-level <code>config</code> directory. If you have any libraries, plugs, etc. configs that have configuration depend on paths, then the app may fail unless those paths are updated.</p>
-
-<h3 id="3-bureaucrat">3. Bureaucrat</h3>
-
+<h3 id="3-bureaucrat">3. Bureaucrat<a href="#3-bureaucrat" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 <p>Bureaucrat is a tool to generate API documentation. After upgrading Phoenix to 1.4.9, it failed to generate the docs due to following error:</p>
-
-<pre><code>[error] GenServer #PID&lt;0.595.0&gt; terminating
+<pre tabindex="0"><code>[error] GenServer #PID&lt;0.595.0&gt; terminating
 ** (Protocol.UndefinedError) protocol Enumerable not implemented for nil of type Atom. This protocol is implemented for the following type(s): Ecto.Adapters.SQL.Stream, Postgrex.Stream, DBConnection.Stream, DBConnection.PrepareStream, Timex.Interval, HashSet, Range, Map, Function, List, Stream, Date.Range, HashDict, GenEvent.Stream, MapSet, File.Stream, IO.Stream
     (elixir) lib/enum.ex:1: Enumerable.impl_for!/1
     (elixir) lib/enum.ex:141: Enumerable.reduce/3
@@ -135,52 +120,47 @@ asdf plugin-add erlang
     (stdlib) gen_server.erl:637: :gen_server.try_dispatch/4
     (stdlib) gen_server.erl:711: :gen_server.handle_msg/6
     (stdlib) proc_lib.erl:249: :proc_lib.init_p_do_apply/3
-</code></pre>
-
-<p>The root problem is in <code>phoenix_swagger</code> library that hasn&rsquo;t been updated yet to work with latest Phoenix versions. Because of it, the swagger file is generated without routes and so on, which causes <code>Bureaucrat.SwaggerSlateMarkdownWriter</code> module to fail.</p>
-
-<p>The <code>phoenix_swagger</code> authors have already fixed this issue in master branch, but haven&rsquo;t yet published the new package to Hex registry. Check the <a href="https://github.com/xerions/phoenix_swagger/issues/232" target="_blank">github issue</a> for more information. The temporary solution is to point your <code>mix.exs</code> to master branch instead:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">defp</span> <span class="n">deps</span> <span class="n">do</span>
+</code></pre><p>The root problem is in <code>phoenix_swagger</code> library that hasn&rsquo;t been updated yet to work with latest Phoenix versions. Because of it, the swagger file is generated without routes and so on, which causes <code>Bureaucrat.SwaggerSlateMarkdownWriter</code> module to fail.</p>
+<p>The <code>phoenix_swagger</code> authors have already fixed this issue in master branch, but haven&rsquo;t yet published the new package to Hex registry. Check the <a href="https://github.com/xerions/phoenix_swagger/issues/232">github issue</a> for more information. The temporary solution is to point your <code>mix.exs</code> to master branch instead:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="kd">defp</span> <span class="n">deps</span> <span class="k">do</span>
     <span class="p">[</span>
       <span class="p">{</span><span class="ss">:phoenix</span><span class="p">,</span> <span class="s2">&#34;~&gt; 1.4.9&#34;</span><span class="p">},</span>
       <span class="p">{</span><span class="ss">:phoenix_swagger</span><span class="p">,</span> <span class="ss">github</span><span class="p">:</span> <span class="s2">&#34;xerions/phoenix_swagger&#34;</span><span class="p">,</span> <span class="ss">branch</span><span class="p">:</span> <span class="s2">&#34;master&#34;</span><span class="p">},</span>
       <span class="n">...</span>
     <span class="p">]</span>
-  <span class="n">end</span></code></pre></div>
-<h3 id="4-releases">4. Releases</h3>
-
-<p>Elixir 1.9 now has built-in <a href="https://hexdocs.pm/mix/Mix.Tasks.Release.html" target="_blank">releases</a> functionality. It is similar to what Distillery was, but there are some differencies. Be sure to read the documentation to understand those differencies. Some observations:</p>
-
+  <span class="k">end</span>
+</code></pre></div><h3 id="4-releases">4. Releases<a href="#4-releases" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>Elixir 1.9 now has built-in <a href="https://hexdocs.pm/mix/Mix.Tasks.Release.html">releases</a> functionality. It is similar to what Distillery was, but there are some differencies. Be sure to read the documentation to understand those differencies. Some observations:</p>
 <ol>
-<li><p>There are <code>vm.args.eex</code> and <code>env.sh.eex</code> that replace <code>vm.args</code>. This split is meant to clearly move env vars like erlang cookie and node name out of <code>vm.args</code>, which should only be used to erlvang vm-specific settings (like kernel options and such).</p></li>
-
-<li><p>Runtime env variables finally work in a sane way. You define them in <code>config/releases.exs</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">import</span> <span class="nc">Config</span>
+<li>
+<p>There are <code>vm.args.eex</code> and <code>env.sh.eex</code> that replace <code>vm.args</code>. This split is meant to clearly move env vars like erlang cookie and node name out of <code>vm.args</code>, which should only be used to erlvang vm-specific settings (like kernel options and such).</p>
+</li>
+<li>
+<p>Runtime env variables finally work in a sane way. You define them in <code>config/releases.exs</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kn">import</span> <span class="nc">Config</span>
 
 <span class="n">config</span> <span class="ss">:my_app</span><span class="p">,</span> <span class="nc">MyApp.Repo</span><span class="p">,</span>
   <span class="ss">username</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_USERNAME&#34;</span><span class="p">),</span>
   <span class="ss">password</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_PASSWORD&#34;</span><span class="p">)</span>
 
-<span class="n">...</span></code></pre></div>
-<p>Note that import line does not use Mix&rsquo;s Config, because Mix is not available within app release. The variables defined in <code>config/releases.exs</code> will override those in <code>config/prod.exs</code> when running a release.</p></li>
-
-<li><p>There is no notion of commands that were used in Distillery to define custom script commands (most commonly to migrate/seed database after deploy). Instead, you have to add a custom release step that copies your scripts to realease&rsquo;s <code>/bin</code> directory:</p>
-
+<span class="n">...</span>
+</code></pre></div><p>Note that import line does not use Mix&rsquo;s Config, because Mix is not available within app release. The variables defined in <code>config/releases.exs</code> will override those in <code>config/prod.exs</code> when running a release.</p>
+</li>
+<li>
+<p>There is no notion of commands that were used in Distillery to define custom script commands (most commonly to migrate/seed database after deploy). Instead, you have to add a custom release step that copies your scripts to realease&rsquo;s <code>/bin</code> directory:</p>
 <ol>
-<li><p>Make sure to have your custom scripts in <code>./rel/bin</code>.</p>
-
+<li>
+<p>Make sure to have your custom scripts in <code>./rel/bin</code>.</p>
 <p>For example, a <code>./rel/bin/migrate.sh</code> could look like:</p>
-
-<pre><code>#!/bin/sh
+<pre tabindex="0"><code>#!/bin/sh
 
 CURR_DIR=`dirname &quot;$0&quot;`
 
 $CURR_DIR/myapp eval &quot;MyApp.ReleaseTasks.migrate&quot;
 </code></pre></li>
-
-<li><p>Then in <code>mix.exs</code>:</p>
-
-<pre><code>def project do
+<li>
+<p>Then in <code>mix.exs</code>:</p>
+<pre tabindex="0"><code>def project do
   [
     ...
 
@@ -193,35 +173,29 @@ $CURR_DIR/myapp eval &quot;MyApp.ReleaseTasks.migrate&quot;
         steps: [:assemble, &amp;copy_bin_files/1]
       ]
     ],
-        
+
     ...
   ]
 end
-    
+
 defp copy_bin_files(release) do
   File.cp_r(&quot;rel/bin&quot;, Path.join(release.path, &quot;bin&quot;))
   release
 end
 </code></pre></li>
-</ol></li>
 </ol>
-
-<h3 id="5-distillery">5. Distillery</h3>
-
+</li>
+</ol>
+<h3 id="5-distillery">5. Distillery<a href="#5-distillery" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 <p>Distillery is not needed anymore, but if you still need it, remember that mix commands have been renamed: <code>mix release</code> -&gt; <code>mix distillery.release</code>, etc.</p>
-
-<h3 id="6-credo">6. Credo</h3>
-
-<p>If you are using <a href="https://github.com/rrrene/credo" target="_blank">Credo</a>, upgrade it as well to 1.1.2+, because it has updated rule for Elixir 1.9.</p>
-
-<h3 id="7-docker">7. Docker</h3>
-
+<h3 id="6-credo">6. Credo<a href="#6-credo" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>If you are using <a href="https://github.com/rrrene/credo">Credo</a>, upgrade it as well to 1.1.2+, because it has updated rule for Elixir 1.9.</p>
+<h3 id="7-docker">7. Docker<a href="#7-docker" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 <p>Don&rsquo;t forget to update the <code>Dockerfile</code> as well, if you are using Docker. IF you are using builder and runner stages, then you may update like this:</p>
-
 <ol>
-<li><p>Builder:</p>
-
-<pre><code>FROM elixir:1.9.0-alpine AS builder
+<li>
+<p>Builder:</p>
+<pre tabindex="0"><code>FROM elixir:1.9.0-alpine AS builder
 
 RUN apk update &amp;&amp; \
     apk add --no-cache \
@@ -231,16 +205,14 @@ RUN apk update &amp;&amp; \
       musl-dev
 ...
 </code></pre></li>
-
-<li><p>Runner:</p>
-
-<pre><code>FROM alpine:3.9 AS runner
+<li>
+<p>Runner:</p>
+<pre tabindex="0"><code>FROM alpine:3.9 AS runner
 RUN apk add -U bash libssl1.1
 COPY --from=builder /app/_build/prod/rel/my_app /app
 ...
-</code></pre>
-
-<p>Note that the runner stage builds from Alpine 3.9. It&rsquo;s common mistake to leave it at Alpine 3.8, but the app won&rsquo;t run properly, because <code>elixir:1.9.0-alpine</code> builds upon Alpine 3.9.</p></li>
+</code></pre><p>Note that the runner stage builds from Alpine 3.9. It&rsquo;s common mistake to leave it at Alpine 3.8, but the app won&rsquo;t run properly, because <code>elixir:1.9.0-alpine</code> builds upon Alpine 3.9.</p>
+</li>
 </ol>
 
 			</div>
@@ -254,6 +226,9 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
 			</footer>
 		</article>
 		<div class="post-nav thin">
+			<a class="next-post" href="https://blog.rebased.dev/posts/electron-macos-uninstall/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>Electron uninstaller for macOS</span>
+			</a>
 			<a class="prev-post" href="https://blog.rebased.dev/posts/jenkins-shared-libraries/">
 				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>Using Jenkins Shared Libraries</span>
 			</a>
@@ -263,14 +238,16 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
 	</main>
 
 	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
-		<p>&copy; 2019 <a href="https://blog.rebased.dev/">Jan Gnezda</a></p>
+		<p>&copy; 2022 <a href="https://blog.rebased.dev/">Jan Gnezda</a></p>
 		<p>
 			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://blog.rebased.dev/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
 		</p>
 	</footer>
 
 
-	<script src="https://blog.rebased.dev/js/main.min.8f39f24808e9d0a9b02da58c2d2838da859dc0b7bdfadbdb1883aae8b6adacfe.js" integrity="sha256-jznySAjp0KmwLaWMLSg42oWdwLe9+tvbGIOq6LatrP4="></script>
+
+	<script src="https://blog.rebased.dev/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
 
 </body>
 

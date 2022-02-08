@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>electron on rebased</title>
+    <link>https://blog.rebased.dev/tags/electron/</link>
+    <description>Recent content in electron on rebased</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 21 Nov 2021 08:11:06 +0100</lastBuildDate><atom:link href="https://blog.rebased.dev/tags/electron/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Electron uninstaller for macOS</title>
+      <link>https://blog.rebased.dev/posts/electron-macos-uninstall/</link>
+      <pubDate>Sun, 21 Nov 2021 08:11:06 +0100</pubDate>
+      
+      <guid>https://blog.rebased.dev/posts/electron-macos-uninstall/</guid>
+      <description>Recently I was working on an Electron app that needed to work with system audio and for MacOS the authors have opted to use BlackHole audio driver. The app was already in development for some time and already used in production. But there was a problem: when user deleted the app, the audio driver wasn&amp;rsquo;t deleted from the system.
+The problem is that during installation the app installed audio driver files into /Library/Audio/Plug-Ins/HAL.</description>
+    </item>
+    
+  </channel>
+</rss>

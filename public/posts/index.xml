@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 	<channel>
 		<title>Posts on rebased</title>
@@ -6,8 +5,109 @@
 		<description>Recent content in Posts on rebased</description>
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
-		<lastBuildDate>Thu, 08 Aug 2019 18:53:37 +0200</lastBuildDate>
+		<lastBuildDate>Sun, 21 Nov 2021 08:11:06 +0100</lastBuildDate>
 		<atom:link href="https://blog.rebased.dev/posts/index.xml" rel="self" type="application/rss+xml" />
+		
+		<item>
+			<title>Electron uninstaller for macOS</title>
+			<link>https://blog.rebased.dev/posts/electron-macos-uninstall/</link>
+			<pubDate>Sun, 21 Nov 2021 08:11:06 +0100</pubDate>
+			
+			<guid>https://blog.rebased.dev/posts/electron-macos-uninstall/</guid>
+			<description>Recently I was working on an Electron app that needed to work with system audio and for MacOS the authors have opted to use BlackHole audio driver. The app was already in development for some time and already used in production. But there was a problem: when user deleted the app, the audio driver wasn&amp;rsquo;t deleted from the system.
+The problem is that during installation the app installed audio driver files into /Library/Audio/Plug-Ins/HAL.</description>
+			<content type="html"><![CDATA[<p>Recently I was working on an <a href="https://www.electronjs.org/">Electron</a> app that needed to work with system audio and for MacOS the authors have opted to use <a href="https://github.com/ExistentialAudio/BlackHole">BlackHole audio driver</a>. The app was already in development for some time and already used in production. But there was a problem: when user deleted the app, the audio driver wasn&rsquo;t deleted from the system.</p>
+<p>The problem is that during installation the app installed audio driver files into <code>/Library/Audio/Plug-Ins/HAL</code>. Normally, this wouldn&rsquo;t be an issue, just bundle an uninstaller that removes those files when a user runs it. But a common pattern for macOS applications is to not have any uninstaller. Users simply delete the app from <code>Applications</code>. Wouldn&rsquo;t it be nice, if I could - as an app developer - hook into a &lsquo;user deleted the app&rsquo; event? Then our uninstall logic would run on that event. Unfortunately, I could not find such an option.</p>
+<p>Ok, so I checked how other macOS apps do this. Apps that add some system wide functionality on top of audio, file system, etc. And the common approach I noticed is that they do in fact bundle uninstallers. For example, <a href="https://www.mycloud.com/">My Cloud</a> NAS:</p>
+<p><a href="/posts/electron-macos-uninstall/1.png"><img src="/posts/electron-macos-uninstall/1.small.png" alt="My Cloud - Applications"></a></p>
+<p>Yuck, all those sub-directories. But in reality it&rsquo;s not a big issue. Myself and many other macOS users don&rsquo;t regularly browse the <code>Applications</code> folder in Finder. Instead, I just use <code>CMD + Space</code> to bring up search bar and type the app name.</p>
+<p><a href="/posts/electron-macos-uninstall/2.png"><img src="/posts/electron-macos-uninstall/2.small.png" alt="My Cloud - spotlight"></a></p>
+<p>The uninstaller is right there at the top. As an aside, I should point out that many discourage having a &lsquo;Windows uninstaller pattern&rsquo; in macOS. There should be no uninstaller-type of thing in macOS, they say. It&rsquo;s unnecessary. However, I don&rsquo;t know of a way to clean system-wide stuff like drivers, when a user moves an app to a trash bin.</p>
+<p>One alternative to having a separate app for uninstalling is to initiate uninstall right from the running app. For example, have a menu option to uninstall the app. However, this approach was immediately rejected by product owner. &ldquo;We can&rsquo;t have the users uninstall our app too easily!&rdquo;, he said.</p>
+<p>It was then agreed to have an uninstaller for our app as well. Now comes the second problem: Electron does not provide any out-of-the-box support for uninstallers in macOS. It does for <a href="https://www.electron.build/configuration/nsis.html">Windows</a>, but not for Mac. So I turned to Google again to see what people are doing in such cases. It may come to no surprise that quite a few decide to build another Electron app for uninstalling and bundle it with the main app. Ugh, I hated the approach, so wasteful. Both, time-wise (development) and resource-wise (users' hard drives).</p>
+<p>Scratch Electron, what are people doing in general when it comes to uninstallers on macOS. There must be a sane way. Essentially, I needed just:</p>
+<ol>
+<li>&ldquo;Are you sure you want to uninstall?&rdquo; prompt,</li>
+<li>&ldquo;Elevate to admin&rdquo; prompt,</li>
+<li>Run uninstall script</li>
+</ol>
+<p>In the end, I stumbled upon this answer: <a href="https://apple.stackexchange.com/questions/224394/how-to-make-a-mac-os-x-app-with-a-shell-script">How to make a Mac OS X .app with a shell script?</a>. It&rsquo;s achingly simple and works in all macOS versions that I&rsquo;ve tried with. Have an executable bash script and mimic the normal macOS app directory structure. Then it automagically works.</p>
+<pre tabindex="0"><code>/Applications
+  |
+  `-- MyBash.app
+        |
+        `-- Contents
+              |
+              `-- MacOS
+              |    |
+              |    `-- MyBash
+              |
+              `-- Resources
+                    |
+                    `-- ... (any other files like icons, etc.)
+
+</code></pre><p><code>MyBash</code> is simply a bash script that is executable. Then, this app will show as <code>MyBash</code> in Finder and double clicking it will run the <code>MyBash</code> script	. We can take advantage of this for the uninstaller by bundling such structure in the main electron app as an extra resource. Then the installer copies it into <code>/Applications</code> directory and voila, uninstaller is there and ready to be run by the user.</p>
+<p>Final piece of the puzzle was how to display prompts from bash scripts. This can be achieved by using Apple script that is in every macOS by means of <a href="https://ss64.com/osx/osascript.html">osascript</a> command.</p>
+<p>Alright, let&rsquo;s examine all the steps (assuming you are using <a href="https://www.electron.build">electron-builder</a> for bundling/installer):</p>
+<ol>
+<li>
+<p>First, the uninstaller app. Should be quite simple, just follow the structure I outlined above. The script itself should be roughly: display couple of prompts, then remove some directories. For example:</p>
+<pre tabindex="0"><code>#!/bin/sh
+
+CHOICE=`osascript &lt;&lt;EOF
+button returned of (display dialog &quot;This action will uninstall MyApp and associated audio driver. Are you sure you want to continue?&quot; buttons {&quot;Cancel&quot;, &quot;Uninstall&quot;} default button 2 with icon caution with title &quot;MyApp Uninstall&quot;)
+EOF`
+
+if [[ &quot;$CHOICE&quot; == &quot;Uninstall&quot; ]]
+then
+  APP_PATH=&quot;/Applications/Utilities/MyApp/MyAppUninstall.app/Contents&quot;
+  osascript -e 'do shell script &quot;$APP_PATH/Resources/uninstall.sh&quot; with administrator privileges'
+fi
+</code></pre><p>Then the <code>uninstall.sh</code> might look like:</p>
+<pre tabindex="0"><code>#!/bin/sh
+
+# Remove following directories
+Dirs=(
+    &quot;/Applications/MyApp.app&quot;
+    &quot;/Applications/Utilities/MyApp&quot;
+    &quot;/Library/Audio/Plug-Ins/HAL/MyApp	Audio.driver&quot;
+    &quot;/Users/$SUDO_USER/Library/Caches/com.electron.myapp&quot;
+    &quot;/Users/$SUDO_USER/Library/Caches/com.electron.myapp.ShipIt&quot;
+)
+
+for Dir in ${Dirs[*]}
+do
+    if [[ -d &quot;$Dir&quot; ]]
+    then
+        rm -rf &quot;$Dir&quot;
+    fi
+done
+
+# Restart core audio
+launchctl kickstart -kp system/com.apple.audio.coreaudiod
+
+osascript &lt;&lt;EOF
+display dialog &quot;MyApp successfully uninstalled.&quot; buttons {&quot;Quit&quot;} default button 1 with title &quot;MyApp Uninstall&quot;
+EOF
+</code></pre><p>Essentially it&rsquo;s remove some dirs, restart audio subsystem, display success prompt.</p>
+</li>
+<li>
+<p>Add uninstaller app to your main Electron app, to the directory specified by <a href="https://www.electron.build/configuration/contents.html#extraresources">extraResources</a> configuration param. That directory will be copied into <code>/Applications/MyApp.app/Contents/Resources</code> during installation.</p>
+</li>
+<li>
+<p>Add a <code>postinstall</code> script in the main Electron app - by default in the <code>pkg-scripts</code> directory. More info about it <a href="https://www.electron.build/configuration/pkg">here</a>. This script should move the bundled uninstaller from <code>/Applications/MyApp.app/Contents/Resources/MyAppUninstaller.app</code> to <code>/Applications/Utilities/MyAppUninstaller.app</code> (or another directory of your choice, as long as it&rsquo;s within <code>/Applications</code>). For example:</p>
+<pre tabindex="0"><code>#!/bin/sh
+
+# Move uninstaller app, so it's accessible for the user in &quot;Applications&quot;
+UTILITIES_DIR=&quot;$2/Utilities/MyApp&quot;
+mkdir -p &quot;$UTILITIES_DIR&quot;
+mv &quot;$2/MyApp.app/Contents/Resources/extraResources/uninstall/MyAppUninstall.app&quot; &quot;$UTILITIES_DIR&quot;
+</code></pre><p>Note that <code>$2</code> is the parent installation directory. <code>/Applications</code> by default, however the user may choose another location during installation.</p>
+</li>
+</ol>
+<p>That&rsquo;s it! Very straightforward once the right things fall in place. The main takeaway for me was that it was right to explore some more instead of going the way of another Electron app for uninstaller.</p>
+]]></content>
+		</item>
 		
 		<item>
 			<title>Upgrading Phoenix projects to latest Elixir</title>
@@ -16,51 +116,36 @@
 			
 			<guid>https://blog.rebased.dev/posts/upgrade-elixir-1.9/</guid>
 			<description>Elixir 1.9 has been released about a month ago. This release is important, because of two things:
- It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
+  It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.
+  According to authors, there are no plans for new features to the language:
  As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned.</description>
-			<content type="html"><![CDATA[
-
-<p>Elixir 1.9 has been <a href="https://elixir-lang.org/blog/2019/06/24/elixir-v1-9-0-released/" target="_blank">released</a> about a month ago. This release is important, because of two things:</p>
-
+			<content type="html"><![CDATA[<p>Elixir 1.9 has been <a href="https://elixir-lang.org/blog/2019/06/24/elixir-v1-9-0-released/">released</a> about a month ago. This release is important, because of two things:</p>
 <ul>
-<li>It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.</li>
-
-<li><p>According to authors, there are no plans for new features to the language:</p>
-
+<li>
+<p>It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.</p>
+</li>
+<li>
+<p>According to authors, there are no plans for new features to the language:</p>
 <blockquote>
 <p>As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned. I know for certain some will consider this fact the most excing part of this announcement!</p>
 </blockquote>
-
-<p>This means a couple of things. Firstly, any further upgrades should be painless. And secondly, a project using Elixir 1.9 can be reasonably sure that it has access to all features for the foreseeable future.</p></li>
+<p>This means a couple of things. Firstly, any further upgrades should be painless. And secondly, a project using Elixir 1.9 can be reasonably sure that it has access to all features for the foreseeable future.</p>
+</li>
 </ul>
-
-<p>This spurred me to upgrade all our Elixir projects to 1.9 and I&rsquo;ve also decided to upgrade Phoenix at the same time to the <a href="https://github.com/phoenixframework/phoenix/blob/v1.4.9/CHANGELOG.md" target="_blank">latest version</a> (1.4.9). Below is a list of problems that you may encounter and/or recommendations if you decide to upgrade as well:</p>
-
+<p>This spurred me to upgrade all our Elixir projects to 1.9 and I&rsquo;ve also decided to upgrade Phoenix at the same time to the <a href="https://github.com/phoenixframework/phoenix/blob/v1.4.9/CHANGELOG.md">latest version</a> (1.4.9). Below is a list of problems that you may encounter and/or recommendations if you decide to upgrade as well:</p>
 <h3 id="1-erlang-compilation-error">1. Erlang compilation error</h3>
-
-<p>We&rsquo;re using <a href="https://github.com/asdf-vm/asdf" target="_blank">asdf</a> and upgrading meant changing <code>.tool-versions</code> file to new Erlang/OTP and Elixir versions:</p>
-
-<pre><code>erlang 22.0.7
+<p>We&rsquo;re using <a href="https://github.com/asdf-vm/asdf">asdf</a> and upgrading meant changing <code>.tool-versions</code> file to new Erlang/OTP and Elixir versions:</p>
+<pre tabindex="0"><code>erlang 22.0.7
 elixir 1.9.1-otp-22
-</code></pre>
-
-<p>and running <code>asdf install</code> in the project directory. Unfortunately, compilation of new Erlang failed on my laptop with &lsquo;missing separator&rsquo; error as outlined in <a href="https://github.com/asdf-vm/asdf-erlang/issues/100" target="_blank">this issue</a>. To fix it, I had to remove and add Erlang plugin:</p>
-
-<pre><code>asdf plugin-remove erlang
+</code></pre><p>and running <code>asdf install</code> in the project directory. Unfortunately, compilation of new Erlang failed on my laptop with &lsquo;missing separator&rsquo; error as outlined in <a href="https://github.com/asdf-vm/asdf-erlang/issues/100">this issue</a>. To fix it, I had to remove and add Erlang plugin:</p>
+<pre tabindex="0"><code>asdf plugin-remove erlang
 asdf plugin-add erlang
-</code></pre>
-
-<p>Then run <code>asdf install</code> again and it worked.</p>
-
+</code></pre><p>Then run <code>asdf install</code> again and it worked.</p>
 <h3 id="2-config-files">2. Config files</h3>
-
 <p>All config files in an umbrella app are now in the top-level <code>config</code> directory. If you have any libraries, plugs, etc. configs that have configuration depend on paths, then the app may fail unless those paths are updated.</p>
-
 <h3 id="3-bureaucrat">3. Bureaucrat</h3>
-
 <p>Bureaucrat is a tool to generate API documentation. After upgrading Phoenix to 1.4.9, it failed to generate the docs due to following error:</p>
-
-<pre><code>[error] GenServer #PID&lt;0.595.0&gt; terminating
+<pre tabindex="0"><code>[error] GenServer #PID&lt;0.595.0&gt; terminating
 ** (Protocol.UndefinedError) protocol Enumerable not implemented for nil of type Atom. This protocol is implemented for the following type(s): Ecto.Adapters.SQL.Stream, Postgrex.Stream, DBConnection.Stream, DBConnection.PrepareStream, Timex.Interval, HashSet, Range, Map, Function, List, Stream, Date.Range, HashDict, GenEvent.Stream, MapSet, File.Stream, IO.Stream
     (elixir) lib/enum.ex:1: Enumerable.impl_for!/1
     (elixir) lib/enum.ex:141: Enumerable.reduce/3
@@ -78,52 +163,47 @@ asdf plugin-add erlang
     (stdlib) gen_server.erl:637: :gen_server.try_dispatch/4
     (stdlib) gen_server.erl:711: :gen_server.handle_msg/6
     (stdlib) proc_lib.erl:249: :proc_lib.init_p_do_apply/3
-</code></pre>
-
-<p>The root problem is in <code>phoenix_swagger</code> library that hasn&rsquo;t been updated yet to work with latest Phoenix versions. Because of it, the swagger file is generated without routes and so on, which causes <code>Bureaucrat.SwaggerSlateMarkdownWriter</code> module to fail.</p>
-
-<p>The <code>phoenix_swagger</code> authors have already fixed this issue in master branch, but haven&rsquo;t yet published the new package to Hex registry. Check the <a href="https://github.com/xerions/phoenix_swagger/issues/232" target="_blank">github issue</a> for more information. The temporary solution is to point your <code>mix.exs</code> to master branch instead:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">defp</span> <span class="n">deps</span> <span class="n">do</span>
+</code></pre><p>The root problem is in <code>phoenix_swagger</code> library that hasn&rsquo;t been updated yet to work with latest Phoenix versions. Because of it, the swagger file is generated without routes and so on, which causes <code>Bureaucrat.SwaggerSlateMarkdownWriter</code> module to fail.</p>
+<p>The <code>phoenix_swagger</code> authors have already fixed this issue in master branch, but haven&rsquo;t yet published the new package to Hex registry. Check the <a href="https://github.com/xerions/phoenix_swagger/issues/232">github issue</a> for more information. The temporary solution is to point your <code>mix.exs</code> to master branch instead:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="kd">defp</span> <span class="n">deps</span> <span class="k">do</span>
     <span class="p">[</span>
       <span class="p">{</span><span class="ss">:phoenix</span><span class="p">,</span> <span class="s2">&#34;~&gt; 1.4.9&#34;</span><span class="p">},</span>
       <span class="p">{</span><span class="ss">:phoenix_swagger</span><span class="p">,</span> <span class="ss">github</span><span class="p">:</span> <span class="s2">&#34;xerions/phoenix_swagger&#34;</span><span class="p">,</span> <span class="ss">branch</span><span class="p">:</span> <span class="s2">&#34;master&#34;</span><span class="p">},</span>
       <span class="n">...</span>
     <span class="p">]</span>
-  <span class="n">end</span></code></pre></div>
-<h3 id="4-releases">4. Releases</h3>
-
-<p>Elixir 1.9 now has built-in <a href="https://hexdocs.pm/mix/Mix.Tasks.Release.html" target="_blank">releases</a> functionality. It is similar to what Distillery was, but there are some differencies. Be sure to read the documentation to understand those differencies. Some observations:</p>
-
+  <span class="k">end</span>
+</code></pre></div><h3 id="4-releases">4. Releases</h3>
+<p>Elixir 1.9 now has built-in <a href="https://hexdocs.pm/mix/Mix.Tasks.Release.html">releases</a> functionality. It is similar to what Distillery was, but there are some differencies. Be sure to read the documentation to understand those differencies. Some observations:</p>
 <ol>
-<li><p>There are <code>vm.args.eex</code> and <code>env.sh.eex</code> that replace <code>vm.args</code>. This split is meant to clearly move env vars like erlang cookie and node name out of <code>vm.args</code>, which should only be used to erlvang vm-specific settings (like kernel options and such).</p></li>
-
-<li><p>Runtime env variables finally work in a sane way. You define them in <code>config/releases.exs</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">import</span> <span class="nc">Config</span>
+<li>
+<p>There are <code>vm.args.eex</code> and <code>env.sh.eex</code> that replace <code>vm.args</code>. This split is meant to clearly move env vars like erlang cookie and node name out of <code>vm.args</code>, which should only be used to erlvang vm-specific settings (like kernel options and such).</p>
+</li>
+<li>
+<p>Runtime env variables finally work in a sane way. You define them in <code>config/releases.exs</code>:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kn">import</span> <span class="nc">Config</span>
 
 <span class="n">config</span> <span class="ss">:my_app</span><span class="p">,</span> <span class="nc">MyApp.Repo</span><span class="p">,</span>
   <span class="ss">username</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_USERNAME&#34;</span><span class="p">),</span>
   <span class="ss">password</span><span class="p">:</span> <span class="nc">System</span><span class="o">.</span><span class="n">fetch_env!</span><span class="p">(</span><span class="s2">&#34;DATABASE_PASSWORD&#34;</span><span class="p">)</span>
 
-<span class="n">...</span></code></pre></div>
-<p>Note that import line does not use Mix&rsquo;s Config, because Mix is not available within app release. The variables defined in <code>config/releases.exs</code> will override those in <code>config/prod.exs</code> when running a release.</p></li>
-
-<li><p>There is no notion of commands that were used in Distillery to define custom script commands (most commonly to migrate/seed database after deploy). Instead, you have to add a custom release step that copies your scripts to realease&rsquo;s <code>/bin</code> directory:</p>
-
+<span class="n">...</span>
+</code></pre></div><p>Note that import line does not use Mix&rsquo;s Config, because Mix is not available within app release. The variables defined in <code>config/releases.exs</code> will override those in <code>config/prod.exs</code> when running a release.</p>
+</li>
+<li>
+<p>There is no notion of commands that were used in Distillery to define custom script commands (most commonly to migrate/seed database after deploy). Instead, you have to add a custom release step that copies your scripts to realease&rsquo;s <code>/bin</code> directory:</p>
 <ol>
-<li><p>Make sure to have your custom scripts in <code>./rel/bin</code>.</p>
-
+<li>
+<p>Make sure to have your custom scripts in <code>./rel/bin</code>.</p>
 <p>For example, a <code>./rel/bin/migrate.sh</code> could look like:</p>
-
-<pre><code>#!/bin/sh
+<pre tabindex="0"><code>#!/bin/sh
 
 CURR_DIR=`dirname &quot;$0&quot;`
 
 $CURR_DIR/myapp eval &quot;MyApp.ReleaseTasks.migrate&quot;
 </code></pre></li>
-
-<li><p>Then in <code>mix.exs</code>:</p>
-
-<pre><code>def project do
+<li>
+<p>Then in <code>mix.exs</code>:</p>
+<pre tabindex="0"><code>def project do
   [
     ...
 
@@ -136,35 +216,29 @@ $CURR_DIR/myapp eval &quot;MyApp.ReleaseTasks.migrate&quot;
         steps: [:assemble, &amp;copy_bin_files/1]
       ]
     ],
-        
+
     ...
   ]
 end
-    
+
 defp copy_bin_files(release) do
   File.cp_r(&quot;rel/bin&quot;, Path.join(release.path, &quot;bin&quot;))
   release
 end
 </code></pre></li>
-</ol></li>
 </ol>
-
+</li>
+</ol>
 <h3 id="5-distillery">5. Distillery</h3>
-
 <p>Distillery is not needed anymore, but if you still need it, remember that mix commands have been renamed: <code>mix release</code> -&gt; <code>mix distillery.release</code>, etc.</p>
-
 <h3 id="6-credo">6. Credo</h3>
-
-<p>If you are using <a href="https://github.com/rrrene/credo" target="_blank">Credo</a>, upgrade it as well to 1.1.2+, because it has updated rule for Elixir 1.9.</p>
-
+<p>If you are using <a href="https://github.com/rrrene/credo">Credo</a>, upgrade it as well to 1.1.2+, because it has updated rule for Elixir 1.9.</p>
 <h3 id="7-docker">7. Docker</h3>
-
 <p>Don&rsquo;t forget to update the <code>Dockerfile</code> as well, if you are using Docker. IF you are using builder and runner stages, then you may update like this:</p>
-
 <ol>
-<li><p>Builder:</p>
-
-<pre><code>FROM elixir:1.9.0-alpine AS builder
+<li>
+<p>Builder:</p>
+<pre tabindex="0"><code>FROM elixir:1.9.0-alpine AS builder
 
 RUN apk update &amp;&amp; \
     apk add --no-cache \
@@ -174,16 +248,14 @@ RUN apk update &amp;&amp; \
       musl-dev
 ...
 </code></pre></li>
-
-<li><p>Runner:</p>
-
-<pre><code>FROM alpine:3.9 AS runner
+<li>
+<p>Runner:</p>
+<pre tabindex="0"><code>FROM alpine:3.9 AS runner
 RUN apk add -U bash libssl1.1
 COPY --from=builder /app/_build/prod/rel/my_app /app
 ...
-</code></pre>
-
-<p>Note that the runner stage builds from Alpine 3.9. It&rsquo;s common mistake to leave it at Alpine 3.8, but the app won&rsquo;t run properly, because <code>elixir:1.9.0-alpine</code> builds upon Alpine 3.9.</p></li>
+</code></pre><p>Note that the runner stage builds from Alpine 3.9. It&rsquo;s common mistake to leave it at Alpine 3.8, but the app won&rsquo;t run properly, because <code>elixir:1.9.0-alpine</code> builds upon Alpine 3.9.</p>
+</li>
 </ol>
 ]]></content>
 		</item>
@@ -195,16 +267,11 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
 			
 			<guid>https://blog.rebased.dev/posts/jenkins-shared-libraries/</guid>
 			<description>In recent months I&amp;rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with Jenkins. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the Jenkinsfile in each of the projects was similar, but not the same.</description>
-			<content type="html"><![CDATA[
-
-<p>In recent months I&rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with <a href="https://jenkins.io/" target="_blank">Jenkins</a>. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the <code>Jenkinsfile</code> in each of the projects was similar, but not the same. I wanted to find a way to reduce the size of <code>Jenkinsfile</code> and possibly remove related files (like kubernetes pod yaml file), because a lot of it repeated in each of the projects.</p>
-
-<p>In this post I&rsquo;ll look into <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/" target="_blank">Jenkins shared libraries</a>, which are super useful for reducing the repetition and boilerplate in Jenkinsfiles. The examples are based off pipelines to deploy to Openshift managed kubernetes cluster, but I did not go into specifics of either Openshift or kubernetes.</p>
-
+			<content type="html"><![CDATA[<p>In recent months I&rsquo;ve worked on multiple different projects that had to be setup for continuous integration and delivery with <a href="https://jenkins.io/">Jenkins</a>. The projects share similar broad patterns of what needs to be done in CI, i.e. all of them have build and test phase, as well as deployment to kubernetes cluster. However, the projects also have differences: some of them are in Phoenix/Elixir, others in React/Typescript. As such, the <code>Jenkinsfile</code> in each of the projects was similar, but not the same. I wanted to find a way to reduce the size of <code>Jenkinsfile</code> and possibly remove related files (like kubernetes pod yaml file), because a lot of it repeated in each of the projects.</p>
+<p>In this post I&rsquo;ll look into <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/">Jenkins shared libraries</a>, which are super useful for reducing the repetition and boilerplate in Jenkinsfiles. The examples are based off pipelines to deploy to Openshift managed kubernetes cluster, but I did not go into specifics of either Openshift or kubernetes.</p>
 <h2 id="the-problem">The problem</h2>
-
-<p>The problem is all the repetition and boilerplate needed to integrate a project with Jenkins build server. Consider a <a href="https://jenkins.io/doc/book/pipeline/#declarative-versus-scripted-pipeline-syntax" target="_blank">declarative pipeline</a> that was used to build and test one of our Elixir projects (simplified for this blog post):</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">pipeline</span> <span class="o">{</span>
+<p>The problem is all the repetition and boilerplate needed to integrate a project with Jenkins build server. Consider a <a href="https://jenkins.io/doc/book/pipeline/#declarative-versus-scripted-pipeline-syntax">declarative pipeline</a> that was used to build and test one of our Elixir projects (simplified for this blog post):</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">pipeline</span> <span class="o">{</span>
   <span class="n">environment</span> <span class="o">{</span>
     <span class="n">NAME</span> <span class="o">=</span> <span class="s1">&#39;project_name&#39;</span>
     <span class="c1">// other env variables go here ...
@@ -277,9 +344,9 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
         <span class="o">}</span>
       <span class="o">}</span>
     <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-<p>Looks a lot, but essentially it tells Jenkins:</p>
+<span class="o">}</span>
 
+</code></pre></div><p>Looks a lot, but essentially it tells Jenkins:</p>
 <ol>
 <li>That we will run our stages using kubernetes agent.</li>
 <li>That we want to build docker image of our project.</li>
@@ -288,48 +355,33 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
 <li>Deploy the app with a Postgres database.</li>
 <li>Seed the database with some data.</li>
 </ol>
-
 <p>Most of the steps are implemented in separate functions (<code>buildImage</code>, <code>deployApp</code>, <code>deployPersistentDb</code>, &hellip;), to make reading the pipeline a bit easier. We can immediately see that some steps will be essentially the same for most projects: set up kubernetes agent, build image, push image, deploy app. Not just that, the whole pipeline could be replicated and the custom parts, like environment variables and testing step, provided by specific project. This can be done using Jenkins Shared Libraries.</p>
-
 <h2 id="shared-library">Shared library</h2>
-
 <p>So, what is a Jenkins Shared Library? It&rsquo;s a project with pre-defined structure that can be used in a Jenkinsfile. The language used is Groovy, which makes sense as Jenkinsfiles are also in Groovy.</p>
-
-<p>You can have common steps and pipelines defined in a shared library, then inside specific Jenkinsfile call those steps or whole pipelines. This sounds great and it is, but with one caveat: it&rsquo;s hardly usable for declarative pipelines. At this time, there are some <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#defining-declarative-pipelines" target="_blank">limitations</a> imposed by Jenkins, such as:</p>
-
+<p>You can have common steps and pipelines defined in a shared library, then inside specific Jenkinsfile call those steps or whole pipelines. This sounds great and it is, but with one caveat: it&rsquo;s hardly usable for declarative pipelines. At this time, there are some <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#defining-declarative-pipelines">limitations</a> imposed by Jenkins, such as:</p>
 <ul>
 <li>one can&rsquo;t break up pipelines into different parts, then combine those parts in one pipeline,</li>
 <li>the pipeline has to be wholly defined in one function, so it&rsquo;s impossible to wrap it in other functions,</li>
 <li>one can&rsquo;t extract stages into separate functions.</li>
 </ul>
-
 <p>These limitations make it impossible to create generic pipelines. We&rsquo;ll have to use scripted pipelines instead. With those there aren&rsquo;t any limitations, so one can easily build generic stages/pipelines. Scripted pipelines are basically free-form Groovy and while they&rsquo;re powerful, it also means that you lose some safety compared to declarative pipelines. Additionally, Jenkins does some things automatically in case of declarative pipelines, like git check out of the project in the setup phase.</p>
-
 <p>With that in mind, let&rsquo;s see how our shared library approach could look like:</p>
-
 <ol>
 <li>The shared library should contain various resource files like the kubernetes pod yaml file (thus removing them from each of the projects).</li>
 <li>The shared library should have generalized pipelines for different kinds of projects, like Elixir and Typescript.</li>
 <li>The <code>Jenkinsfile</code> in a project should be quite short. In fact, it should only have information to use the shared library and specific environment variables.</li>
 </ol>
-
 <h2 id="implementation">Implementation</h2>
-
 <p>Let&rsquo;s dive into shared library project. In essence, a Jenkins shared library has three directories:</p>
-
-<pre><code>|
+<pre tabindex="0"><code>|
 `-- src          # Groovy sources/classes
 |
 `-- vars         # Groovy scripts exposed as variables
 |
 `-- resources    # Non-groovy files (xml, json, ...)
-</code></pre>
-
-<p>It may be a bit confusing to have <code>src</code> and <code>vars</code> both containing Groovy source files, but you can think of <code>vars</code> as a way to simplify the implementation - they are automatically exposed in <code>Jenkinsfile</code> as variables (essentially auto-created singletons). For our needs, we&rsquo;ll only use <code>vars</code> and <code>resources</code>.</p>
-
+</code></pre><p>It may be a bit confusing to have <code>src</code> and <code>vars</code> both containing Groovy source files, but you can think of <code>vars</code> as a way to simplify the implementation - they are automatically exposed in <code>Jenkinsfile</code> as variables (essentially auto-created singletons). For our needs, we&rsquo;ll only use <code>vars</code> and <code>resources</code>.</p>
 <p>If you are deploying your projects in a kubernetes cluster, then the <code>resources</code> directory could contain yaml files for deploying pods, commands, etc.</p>
-
-<pre><code>|
+<pre tabindex="0"><code>|
 `-- resources
   |
   `-- com
@@ -345,13 +397,9 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
         `-- persistent-volume.yaml
         |
         `-- ...
-</code></pre>
-
-<p>It is recommended to use Java-like package structure to avoid naming conflicts in the classpath. Now we will be able to use these two files in the common pipelines.</p>
-
+</code></pre><p>It is recommended to use Java-like package structure to avoid naming conflicts in the classpath. Now we will be able to use these two files in the common pipelines.</p>
 <p>Next, we&rsquo;ll put the pipelines and steps into <code>vars</code>. I suggest to split the code into multiple files:</p>
-
-<pre><code>|
+<pre tabindex="0"><code>|
 `-- vars
   |
   `-- pipelines.groovy
@@ -361,25 +409,17 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
   `-- utils.groovy
   |
   `-- ...
-</code></pre>
-
-<p>It&rsquo;s not necessary to do that, but it makes it easier to read and understand if all the logic isn&rsquo;t stuffed into one file. The scripts in <code>vars</code> will be auto-imported in other groovy files (including the Jenkinsfiles), so their functions can be called directly without additional imports, e.g. <code>utils.myFunction(...)</code>.</p>
-
+</code></pre><p>It&rsquo;s not necessary to do that, but it makes it easier to read and understand if all the logic isn&rsquo;t stuffed into one file. The scripts in <code>vars</code> will be auto-imported in other groovy files (including the Jenkinsfiles), so their functions can be called directly without additional imports, e.g. <code>utils.myFunction(...)</code>.</p>
 <p>The overarching goal is to make Jenkinsfiles short or in other words, without specific logic. This means that the shared library will have to take care of not just one pipeline (or use case), but more of them:</p>
-
 <ol>
 <li>shared library should be able to provide pipelines for different languages/frameworks,</li>
 <li>shared library should take care of different rules, such as QA vs production environment or similar, because those often mean that a build/deployment is slightly different.</li>
 </ol>
-
 <p>Let&rsquo;s look at <code>stages.groovy</code> and <code>pipelines.groovy</code>.</p>
-
-<h2 id="stages-groovy">stages.groovy</h2>
-
+<h2 id="stagesgroovy">stages.groovy</h2>
 <p>So stages should contain the common stages needed in pipelines. For example, building a Docker image. Additionally, they should be composable, so that for example it&rsquo;s possible to do something before or after each stage. That way, a pipeline can use a common stage even if it needs to do something additional in that stage.</p>
-
 <p>First, let&rsquo;s define a template function:</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
 </span><span class="cm"> * Defines a stage template to reduce the boilerplate in actual stages.
 </span><span class="cm"> */</span>
 <span class="kt">def</span> <span class="nf">template</span><span class="o">(</span><span class="n">stageName</span><span class="o">,</span> <span class="n">containerName</span><span class="o">,</span> <span class="n">body</span><span class="o">,</span> <span class="n">before</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="n">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
@@ -396,11 +436,10 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
       <span class="o">}</span>
     <span class="o">}</span>
   <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-<p>Essentially it&rsquo;s a stage wrapper that also supports before and after logic. <code>body</code>, <code>before</code> and <code>after</code> are expected to be functions/closures.</p>
-
+<span class="o">}</span>
+</code></pre></div><p>Essentially it&rsquo;s a stage wrapper that also supports before and after logic. <code>body</code>, <code>before</code> and <code>after</code> are expected to be functions/closures.</p>
 <p>Now we can define concrete stages using this template function:</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
 </span><span class="cm"> * Builds docker image needed to run the app.
 </span><span class="cm"> */</span>
 <span class="kt">def</span> <span class="nf">buildImage</span><span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">before</span> <span class="o">=</span> <span class="kc">null</span><span class="o">,</span> <span class="n">after</span> <span class="o">=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
@@ -418,11 +457,10 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
   <span class="o">},</span> <span class="n">before</span><span class="o">,</span> <span class="n">after</span><span class="o">)</span>
 <span class="o">}</span>
 
-<span class="s">//</span> <span class="n">add</span> <span class="n">other</span> <span class="n">stages</span> <span class="k">as</span> <span class="n">needed</span> <span class="o">...</span></code></pre></div>
-<h2 id="pipelines-groovy">pipelines.groovy</h2>
-
+<span class="c1">// add other stages as needed ...
+</span></code></pre></div><h2 id="pipelinesgroovy">pipelines.groovy</h2>
 <p>The <code>pipelines.groovy</code> will contain pipelines, which will be assembled from a number of stages (preferrably defined in <code>stages.groovy</code>). It is common to have slightly different pipelines in case it&rsquo;s a <code>master</code> branch or <code>PR</code> branch. For example, you may deploy Postgres without permanent storage for <code>PR</code> deployment and with permanent storage for staging (<code>develop</code> branch). Let&rsquo;s start with a template function and basic pipeline/wrapper for kubernetes deployments:</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="kn">import</span> <span class="nn">groovy.transform.Field</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="kn">import</span> <span class="nn">groovy.transform.Field</span>
 
 <span class="c1">// Unfortunately, enums can&#39;t be exported/used in other modules,
 </span><span class="c1">// so we have to use the map.
@@ -438,10 +476,10 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
   <span class="k">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">BRANCH_NAME</span> <span class="o">==</span> <span class="s1">&#39;master&#39;</span><span class="o">)</span> <span class="o">{</span>
     <span class="c1">// production
 </span><span class="c1"></span>    <span class="n">kubernetesPipeline</span><span class="o">(</span><span class="n">Type</span><span class="o">.</span><span class="na">Production</span><span class="o">,</span> <span class="n">label</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
-  <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">BRANCH_NAME</span> <span class="o">==</span> <span class="s1">&#39;develop&#39;</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">BRANCH_NAME</span> <span class="o">==</span> <span class="s1">&#39;develop&#39;</span><span class="o">)</span> <span class="o">{</span>
     <span class="c1">// staging
 </span><span class="c1"></span>    <span class="n">kubernetesPipeline</span><span class="o">(</span><span class="n">Type</span><span class="o">.</span><span class="na">DevQA</span><span class="o">,</span> <span class="n">label</span><span class="o">,</span> <span class="n">name</span><span class="o">,</span> <span class="n">env</span><span class="o">,</span> <span class="n">pipelineStages</span><span class="o">)</span>
-  <span class="o">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span> <span class="o">{</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">env</span><span class="o">.</span><span class="na">CHANGE_ID</span><span class="o">)</span> <span class="o">{</span>
     <span class="c1">// pull request
 </span><span class="c1"></span>    <span class="c1">//
 </span><span class="c1"></span>    <span class="c1">// You may have some additional logic here to decide
@@ -482,9 +520,9 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
   <span class="n">stage</span><span class="o">(</span><span class="s1">&#39;Skipped build&#39;</span><span class="o">)</span> <span class="o">{</span>
     <span class="n">echo</span> <span class="n">message</span>
   <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-<p>Ok, so we&rsquo;ve defined some more building blocks. Let&rsquo;s see how this can be used for a more concrete pipeline:</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
+<span class="o">}</span>
+</code></pre></div><p>Ok, so we&rsquo;ve defined some more building blocks. Let&rsquo;s see how this can be used for a more concrete pipeline:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="cm">/**
 </span><span class="cm"> * Defines a pipeline for Elixir/Phoenix projects.
 </span><span class="cm"> *
 </span><span class="cm"> * @param name the project name
@@ -554,15 +592,13 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
       <span class="o">}</span>
     <span class="o">}</span>
   <span class="o">}</span>
-<span class="o">}</span></code></pre></div>
-<p>Alright, so that&rsquo;s quite a few things going on. We&rsquo;ve defined an elixir pipeline as a closure that runs some stages and fed that closure into template pipeline. As an example, I&rsquo;ve specified <code>runTests</code> stage as a completely custom Groovy code block and used it as part of elixir pipeline.</p>
+<span class="o">}</span>
 
+</code></pre></div><p>Alright, so that&rsquo;s quite a few things going on. We&rsquo;ve defined an elixir pipeline as a closure that runs some stages and fed that closure into template pipeline. As an example, I&rsquo;ve specified <code>runTests</code> stage as a completely custom Groovy code block and used it as part of elixir pipeline.</p>
 <p>In similar manner we could define a pipeline for React/Typescript project and so on.</p>
-
 <h2 id="projects-using-the-shared-library">Projects using the shared library</h2>
-
 <p>The <code>Jenkinsfile</code> in each of the projects can now be much shorter. Assuming we have our shared library in Github with the name <code>demo-library</code>, then the Jenkinsfile could be this short:</p>
-<div class="highlight"><pre class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">library</span><span class="o">(</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-groovy" data-lang="groovy"><span class="n">library</span><span class="o">(</span>
   <span class="nl">identifier:</span> <span class="s2">&#34;demo-library@master&#34;</span><span class="o">,</span>
   <span class="nl">retriever:</span> <span class="n">modernSCM</span><span class="o">(</span>
     <span class="o">[</span>
@@ -581,22 +617,17 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
     <span class="nl">CUSTOM_VAR1:</span> <span class="s1">&#39;...&#39;</span><span class="o">,</span>
     <span class="nl">CUSTOM_VAR2:</span> <span class="s1">&#39;...&#39;</span><span class="o">,</span>
   <span class="o">]</span>
-<span class="o">)</span></code></pre></div>
-<p>Ok, so this Jenkinsfile does two things:</p>
-
+<span class="o">)</span>
+</code></pre></div><p>Ok, so this Jenkinsfile does two things:</p>
 <ol>
 <li>Loads a shared library from a github repo (the <code>credentialsId</code> you can find in your Jenkins settings by going to <code>https://jenkins.your-company.com/credentials/</code> assuming you&rsquo;ve setup Github integration int  Jenkins). Once the shared library is loaded, then its exported functions can be used without further imports or similar mechanisms.</li>
 <li>Invokes <code>pipelines.elixir(...)</code> with the project&rsquo;s name and Jenkins environment.</li>
 </ol>
-
 <blockquote>
-<p>Note that you can also import a shared library <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#using-libraries" target="_blank">globally</a> in Jenkins configuration, then just alias it in the Jenkinsfile like so: <code>@Library('demo-library') _</code>.</p>
+<p>Note that you can also import a shared library <a href="https://jenkins.io/doc/book/pipeline/shared-libraries/#using-libraries">globally</a> in Jenkins configuration, then just alias it in the Jenkinsfile like so: <code>@Library('demo-library') _</code>.</p>
 </blockquote>
-
 <p>Finally, we should remove yaml files or other resources, because they are now part of the shared library.</p>
-
 <h2 id="should-i-use-jenkins-shared-libraries">Should I use Jenkins Shared Libraries?</h2>
-
 <p>I think that if you have multiple projects built, tested and deployed by Jenkins, then shared libraries provide a very flexible way to deal with repetition and boilerplate. But we have to look at cons, too, as is the case with any abstraction. To me, the single biggest con is that looking at a project&rsquo;s Jenkinsfile, one has no idea what is actually happening without looking at the code     in the shared library project. But to me the ability to fix/change/enhance continuous integration and delivery at one place for all projects outweighs the blackbox-iness of this approach.</p>
 ]]></content>
 		</item>
@@ -609,17 +640,13 @@ COPY --from=builder /app/_build/prod/rel/my_app /app
 			<guid>https://blog.rebased.dev/posts/phoenix-recurring-job/</guid>
 			<description>There is often a need to do some work repeatedly in any non-trivial application. Maybe send a daily report or purge unused resources. Let&amp;rsquo;s see how we can do that in a Phoenix app.
 It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurring jobs due to Elixir being a language that targets Erlang VM and therefore has access to lightweight concurrency with supervisors and child processes. In fact, let&amp;rsquo;s check the application.</description>
-			<content type="html"><![CDATA[
+			<content type="html"><![CDATA[<p>There is often a need to do some work repeatedly in any non-trivial application. Maybe send a daily report or purge unused resources. Let&rsquo;s see how we can do that in a Phoenix app.</p>
+<h2 id="its-all-erlang-underneath">It&rsquo;s all Erlang underneath</h2>
+<p>It is pretty straightforward to do recurring jobs due to Elixir being a language that targets Erlang VM and therefore has access to lightweight concurrency with  <a href="https://hexdocs.pm/elixir/Supervisor.html">supervisors</a> and child processes. In fact, let&rsquo;s check the <code>application.ex</code> file in a typical Phoenix app. This file is auto-generated when bootstrapping a new Pheonix app with <code>mix phx.new</code> command and is responsible for starting the app:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="k">do</span>
+  <span class="kn">use</span> <span class="nc">Application</span>
 
-<p>There is often a need to do some work repeatedly in any non-trivial application. Maybe send a daily report or purge unused resources. Let&rsquo;s see how we can do that in a Phoenix app.</p>
-
-<h2 id="it-s-all-erlang-underneath">It&rsquo;s all Erlang underneath</h2>
-
-<p>It is pretty straightforward to do recurring jobs due to Elixir being a language that targets Erlang VM and therefore has access to lightweight concurrency with  <a href="https://hexdocs.pm/elixir/Supervisor.html" target="_blank">supervisors</a> and child processes. In fact, let&rsquo;s check the <code>application.ex</code> file in a typical Phoenix app. This file is auto-generated when bootstrapping a new Pheonix app with <code>mix phx.new</code> command and is responsible for starting the app:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="n">do</span>
-  <span class="n">use</span> <span class="nc">Application</span>
-
-  <span class="n">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="k">do</span>
     <span class="n">children</span> <span class="o">=</span> <span class="p">[</span>
       <span class="nc">DemoApp.Repo</span>
     <span class="p">]</span>
@@ -629,37 +656,33 @@ It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurrin
       <span class="ss">strategy</span><span class="p">:</span> <span class="ss">:one_for_one</span><span class="p">,</span>
       <span class="ss">name</span><span class="p">:</span> <span class="nc">DemoApp.Supervisor</span>
     <span class="p">)</span>
-  <span class="n">end</span>
-<span class="n">end</span></code></pre></div>
-<p>Ok, so our DemoApp creates a supervisor that starts child processes. In this example it&rsquo;s just one child, but there&rsquo;s nothing keeping us from having more. And that&rsquo;s exactly what we&rsquo;ll do to run custom jobs.</p>
+  <span class="k">end</span>
+<span class="k">end</span>
 
+</code></pre></div><p>Ok, so our DemoApp creates a supervisor that starts child processes. In this example it&rsquo;s just one child, but there&rsquo;s nothing keeping us from having more. And that&rsquo;s exactly what we&rsquo;ll do to run custom jobs.</p>
 <p>Just a short note on supervisor strategies. A supervisor strategy instructs supervisor what to do when a child process dies. The one used in the example, <code>:one_for_one</code>, means that if a child process terminates, then that process is restarted. There are other strategies as well, like killing all children if one dies or doing nothing and so on, but for our use case <code>:one_for_one</code> is exactly what we want.</p>
-
 <h2 id="simple-job">Simple job</h2>
-
 <p>Let&rsquo;s do following:</p>
-
 <ol>
 <li>Implement our job as child process</li>
 <li>Schedule the work one minute after initialization.</li>
 <li>After work is done, schedule it again.</li>
 </ol>
+<p>Once we have our job, we just have to pass it to <code>children</code> list for the supervisor. Building upon the <a href="https://hexdocs.pm/elixir/Supervisor.html#module-examples">example</a> in Elixir docs our job could look like this:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="k">do</span>
+  <span class="kn">use</span> <span class="nc">GenServer</span>
 
-<p>Once we have our job, we just have to pass it to <code>children</code> list for the supervisor. Building upon the <a href="https://hexdocs.pm/elixir/Supervisor.html#module-examples" target="_blank">example</a> in Elixir docs our job could look like this:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="n">do</span>
-  <span class="n">use</span> <span class="nc">GenServer</span>
-
-  <span class="n">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="k">do</span>
     <span class="nc">GenServer</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span><span class="n">__MODULE__</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="ss">name</span><span class="p">:</span> <span class="n">__MODULE__</span><span class="p">)</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-  <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="k">do</span>
     <span class="n">schedule</span><span class="p">()</span>
     
     <span class="p">{</span><span class="ss">:ok</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-  <span class="n">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="k">do</span>
     <span class="c1"># the actual work to be done</span>
     <span class="nc">IO</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&#34;Running job ...&#34;</span><span class="p">)</span>
     
@@ -667,28 +690,25 @@ It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurrin
     <span class="n">schedule</span><span class="p">()</span>
     
     <span class="p">{</span><span class="ss">:noreply</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
   
-  <span class="n">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="n">do</span>
+  <span class="kd">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="k">do</span>
     <span class="c1"># schedule after one minute</span>
     <span class="nc">Process</span><span class="o">.</span><span class="n">send_after</span><span class="p">(</span><span class="n">self</span><span class="p">(),</span> <span class="ss">:work</span><span class="p">,</span> <span class="mi">60000</span><span class="p">)</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-<span class="n">end</span></code></pre></div>
-<p>In essence, our Job is a process that waits for <code>:work</code> message to do its work. What we want is that <code>:work</code> message arrives once per 60 seconds and this is done in two steps:</p>
-
+<span class="k">end</span>
+</code></pre></div><p>In essence, our Job is a process that waits for <code>:work</code> message to do its work. What we want is that <code>:work</code> message arrives once per 60 seconds and this is done in two steps:</p>
 <ol>
 <li>By calling <code>schedule/0</code> function during initialization.</li>
 <li>And by calling <code>schedule/0</code> every time after work is done.</li>
 </ol>
-
-<p>You may be thinking, &ldquo;This won&rsquo;t work properly. What if there&rsquo;s an error in <code>handle_info/2</code> function? We should catch it, otherwise the job won&rsquo;t be re-scheduled.&ldquo;. But that&rsquo;s in fact not necessary, because the supervisor will take care of restarting a failed child process. This keeps the code simple and is one of the benefits we get from Erlang&rsquo;s concurrency.</p>
-
+<p>You may be thinking, &ldquo;This won&rsquo;t work properly. What if there&rsquo;s an error in <code>handle_info/2</code> function? We should catch it, otherwise the job won&rsquo;t be re-scheduled.&rdquo;. But that&rsquo;s in fact not necessary, because the supervisor will take care of restarting a failed child process. This keeps the code simple and is one of the benefits we get from Erlang&rsquo;s concurrency.</p>
 <p>Now that we have the Job implementation, we have to make sure it&rsquo;s started when the app starts:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="n">do</span>
-  <span class="n">use</span> <span class="nc">Application</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">DemoApp.Application</span> <span class="k">do</span>
+  <span class="kn">use</span> <span class="nc">Application</span>
 
-  <span class="n">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">start</span><span class="p">(</span><span class="n">_type</span><span class="p">,</span> <span class="n">_args</span><span class="p">)</span> <span class="k">do</span>
     <span class="n">children</span> <span class="o">=</span> <span class="p">[</span>
       <span class="nc">DemoApp.Repo</span><span class="p">,</span>
       <span class="nc">DemoApp.Job</span>
@@ -699,71 +719,65 @@ It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurrin
       <span class="ss">strategy</span><span class="p">:</span> <span class="ss">:one_for_one</span><span class="p">,</span>
       <span class="ss">name</span><span class="p">:</span> <span class="nc">DemoApp.Supervisor</span>
     <span class="p">)</span>
-  <span class="n">end</span>
-<span class="n">end</span></code></pre></div>
-<p>That&rsquo;s right, it&rsquo;s just one line added to the children array.</p>
-
-<h2 id="wait-it-s-not-that-simple">Wait, it&rsquo;s not that simple</h2>
-
-<p>It really is, but only in case your jobs don&rsquo;t require complex fallback logic. For example, it may not be desired that a job is just re-run if it fails or you&rsquo;d want that it&rsquo;s only retried couple of times before giving up. If that&rsquo;s the case, then you may want to look into third party dependencies such as <a href="https://hexdocs.pm/quantum/readme.html" target="_blank">Quantum</a> or <a href="https://github.com/edgurgel/verk" target="_blank">Verk</a>. Or implement this behaviour yourself, but be ready for a rabbit hole of job scheduling.</p>
-
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div><p>That&rsquo;s right, it&rsquo;s just one line added to the children array.</p>
+<h2 id="wait-its-not-that-simple">Wait, it&rsquo;s not that simple</h2>
+<p>It really is, but only in case your jobs don&rsquo;t require complex fallback logic. For example, it may not be desired that a job is just re-run if it fails or you&rsquo;d want that it&rsquo;s only retried couple of times before giving up. If that&rsquo;s the case, then you may want to look into third party dependencies such as <a href="https://hexdocs.pm/quantum/readme.html">Quantum</a> or <a href="https://github.com/edgurgel/verk">Verk</a>. Or implement this behaviour yourself, but be ready for a rabbit hole of job scheduling.</p>
 <h2 id="code-reuse">Code reuse</h2>
-
-<p>If you have many different jobs (well, more than one), then it&rsquo;s annoying to copy all that boilerplate for every job implementation. Ideally, the only two things we&rsquo;d want in a job is the time interval and the code to do the work. We can achieve this using Elixir <a href="https://elixir-lang.org/getting-started/meta/macros.html" target="_blank">macros</a>. Here&rsquo;s how such a job could look like:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.DemoJob</span> <span class="n">do</span>
-  <span class="n">use</span> <span class="nc">DemoApp.Job</span>
+<p>If you have many different jobs (well, more than one), then it&rsquo;s annoying to copy all that boilerplate for every job implementation. Ideally, the only two things we&rsquo;d want in a job is the time interval and the code to do the work. We can achieve this using Elixir <a href="https://elixir-lang.org/getting-started/meta/macros.html">macros</a>. Here&rsquo;s how such a job could look like:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">DemoApp.DemoJob</span> <span class="k">do</span>
+  <span class="kn">use</span> <span class="nc">DemoApp.Job</span>
 
   <span class="c1"># every 10 minutes</span>
   <span class="na">@job_interval</span> <span class="mi">600</span>
 
-  <span class="n">def</span> <span class="n">get_interval</span><span class="p">(),</span> <span class="ss">do</span><span class="p">:</span> <span class="na">@job_interval</span>
+  <span class="kd">def</span> <span class="n">get_interval</span><span class="p">(),</span> <span class="ss">do</span><span class="p">:</span> <span class="na">@job_interval</span>
 
-  <span class="n">def</span> <span class="n">work</span><span class="p">()</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">work</span><span class="p">()</span> <span class="k">do</span>
     <span class="nc">IO</span><span class="o">.</span><span class="n">puts</span><span class="p">(</span><span class="s2">&#34;DemoJob working ...&#34;</span><span class="p">)</span>
-  <span class="n">end</span>
-<span class="n">end</span></code></pre></div>
-<p>The <code>use DemoApp.Job</code> line means that the DemoJob will use <code>Job</code> macro, which is composed mostly of the boilerplate we&rsquo;ve seen in the &lsquo;Simple job&rsquo; section:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="n">do</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div><p>The <code>use DemoApp.Job</code> line means that the DemoJob will use <code>Job</code> macro, which is composed mostly of the boilerplate we&rsquo;ve seen in the &lsquo;Simple job&rsquo; section:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">DemoApp.Job</span> <span class="k">do</span>
   <span class="na">@callback</span> <span class="n">work</span><span class="p">()</span> <span class="o">::</span> <span class="n">any</span>
   <span class="na">@callback</span> <span class="n">get_interval</span><span class="p">()</span> <span class="o">::</span> <span class="nc">Integer</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>
 
-  <span class="n">defmacro</span> <span class="n">__using__</span><span class="p">(</span><span class="n">_params</span><span class="p">)</span> <span class="n">do</span>
-    <span class="n">quote</span> <span class="n">do</span>
+  <span class="kd">defmacro</span> <span class="n">__using__</span><span class="p">(</span><span class="n">_params</span><span class="p">)</span> <span class="k">do</span>
+    <span class="k">quote</span> <span class="k">do</span>
       <span class="na">@behaviour</span> <span class="nc">DemoApp.Job</span>
 
-      <span class="n">use</span> <span class="nc">GenServer</span>
+      <span class="kn">use</span> <span class="nc">GenServer</span>
 
-      <span class="n">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+      <span class="kd">def</span> <span class="n">start_link</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="k">do</span>
         <span class="nc">GenServer</span><span class="o">.</span><span class="n">start_link</span><span class="p">(</span><span class="n">__MODULE__</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="ss">name</span><span class="p">:</span> <span class="n">__MODULE__</span><span class="p">)</span>
-      <span class="n">end</span>
+      <span class="k">end</span>
 
-      <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+      <span class="kd">def</span> <span class="n">init</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="k">do</span>
         <span class="n">schedule</span><span class="p">()</span>
 
         <span class="p">{</span><span class="ss">:ok</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
-      <span class="n">end</span>
+      <span class="k">end</span>
 
-      <span class="n">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="n">do</span>
+      <span class="kd">def</span> <span class="n">handle_info</span><span class="p">(</span><span class="ss">:work</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span> <span class="k">do</span>
         <span class="n">work</span><span class="p">()</span>
 
         <span class="n">schedule</span><span class="p">()</span>
 
         <span class="p">{</span><span class="ss">:noreply</span><span class="p">,</span> <span class="n">state</span><span class="p">}</span>
-      <span class="n">end</span>
+      <span class="k">end</span>
 
-      <span class="n">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="n">do</span>
+      <span class="kd">defp</span> <span class="n">schedule</span><span class="p">()</span> <span class="k">do</span>
         <span class="nc">Process</span><span class="o">.</span><span class="n">send_after</span><span class="p">(</span><span class="n">self</span><span class="p">(),</span> <span class="ss">:work</span><span class="p">,</span> <span class="n">get_interval</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">)</span>
-      <span class="n">end</span>
-    <span class="n">end</span>
-  <span class="n">end</span>
-<span class="n">end</span></code></pre></div>
-<p>The <code>DemoApp.Job</code> module specifies two things:</p>
-
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div><p>The <code>DemoApp.Job</code> module specifies two things:</p>
 <ol>
-<li>The <a href="https://elixir-lang.org/getting-started/typespecs-and-behaviours.html#behaviours" target="_blank">behaviour</a> with two callbacks. Behaviours are essentially the same as interfaces in some other languages, which means that other modules using this module will have to implement <code>work/0</code> and <code>get_interval/0</code> functions.</li>
+<li>The <a href="https://elixir-lang.org/getting-started/typespecs-and-behaviours.html#behaviours">behaviour</a> with two callbacks. Behaviours are essentially the same as interfaces in some other languages, which means that other modules using this module will have to implement <code>work/0</code> and <code>get_interval/0</code> functions.</li>
 <li>The macro with the job boilerplate code. You can think of macros as text blocks that are copied verbatim to every module using the macro.</li>
 </ol>
-
 <p>Now any job implementation that uses <code>DemoApp.Job</code> module will be much shorter and in case we have to make changes to boilerplate code, we only have to do it in one place.</p>
 ]]></content>
 		</item>
@@ -776,101 +790,87 @@ It&amp;rsquo;s all Erlang underneath It is pretty straightforward to do recurrin
 			<guid>https://blog.rebased.dev/posts/phoenix-custom-session-store/</guid>
 			<description>In this post I&amp;rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&amp;rsquo;s super easy!
 The Phoenix framework is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&amp;rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily.</description>
-			<content type="html"><![CDATA[
-
-<p>In this post I&rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&rsquo;s super easy!</p>
-
-<p>The <a href="https://github.com/phoenixframework/phoenix" target="_blank">Phoenix framework</a> is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily. This applies to session storage as well.</p>
-
-<p>Phoenix uses <a href="https://hexdocs.pm/plug/Plug.Session.html" target="_blank">Plug.Session</a> to handle http sessions. A plug is a function that receives a connection, does its thing and then returns a connection. You can think of it as middleware. The session plug provides two strategies for saving session state:</p>
-
+			<content type="html"><![CDATA[<p>In this post I&rsquo;ll show you how to build a custom session store in a Phoenix-based app. It&rsquo;s super easy!</p>
+<p>The <a href="https://github.com/phoenixframework/phoenix">Phoenix framework</a> is one of the most popular web frameworks in Elixir community. In fact, I and many other developers have been introduced to Elixir through a Phoenix app. One of the great things about Phoenix is that it&rsquo;s not opinionated framework - it provides sensible defaults, but may be changed or extended easily. This applies to session storage as well.</p>
+<p>Phoenix uses <a href="https://hexdocs.pm/plug/Plug.Session.html">Plug.Session</a> to handle http sessions. A plug is a function that receives a connection, does its thing and then returns a connection. You can think of it as middleware. The session plug provides two strategies for saving session state:</p>
 <ol>
-<li><code>Plug.Session.ETS</code>: session state is stored in an in-memory <a href="https://elixir-lang.org/getting-started/mix-otp/ets.html" target="_blank">ETS table</a>.</li>
+<li><code>Plug.Session.ETS</code>: session state is stored in an in-memory <a href="https://elixir-lang.org/getting-started/mix-otp/ets.html">ETS table</a>.</li>
 <li><code>Plug.Session.COOKIE</code>: session state is stored within the cookie itself (cookie is encrypted, of course).</li>
 </ol>
-
-<p>These two strategies are totally fine for certain types of apps, but may not be the right choice for your app. Maybe you don&rsquo;t want session state to propagate to users&rsquo; browsers or have a distributed deployment where different app instances should be able to recognize user&rsquo;s session cookie. Whatever the reason may be, you can tell Phoenix to use custom session store when initializing <code>Plug.Session</code> middleware.</p>
-
+<p>These two strategies are totally fine for certain types of apps, but may not be the right choice for your app. Maybe you don&rsquo;t want session state to propagate to users' browsers or have a distributed deployment where different app instances should be able to recognize user&rsquo;s session cookie. Whatever the reason may be, you can tell Phoenix to use custom session store when initializing <code>Plug.Session</code> middleware.</p>
 <p>Just a note before we dive into implementation. The session &lsquo;store&rsquo; is a bit of misnomer. It won&rsquo;t actually store anything, but act more like a glue between Phoenix and a real backing store. Backing store may be a Postgres database, Redis or Mongo, for example.</p>
-
 <h2 id="step-one-implementation">Step one: implementation</h2>
-
 <p>Let&rsquo;s start by creating a new module that will be our custom store. We need to:</p>
-
 <ol>
 <li>Use <code>@behaviour Plug.Session.Store</code> to tell that the module can be used as session store. <code>Plug.Session</code> will then call our store as needed (login, logout, etc.).</li>
 <li>Implement four functions:
-
 <ol>
 <li><code>init/1</code> - do any needed initialization. The returned <code>opts</code> are later passed to following three functions.</li>
 <li><code>get/3</code> - fetch session data.</li>
 <li><code>put/4</code> - save (new) session.</li>
 <li><code>delete/3</code> - remove invalidated session.</li>
-</ol></li>
 </ol>
-
+</li>
+</ol>
 <p>In our example, we&rsquo;ll assume that sessions will be stored in a Postgres database that has a table named <code>sessions</code> and our app already has an api and schema to read and write to the database. Further, we want our sessions to be valid for certain amount of time and after that become invalid. For example, this could be the Ecto schema for sessions:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">schema</span> <span class="s2">&#34;sessions&#34;</span> <span class="n">do</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">schema</span> <span class="s2">&#34;sessions&#34;</span> <span class="k">do</span>
     <span class="n">field</span><span class="p">(</span><span class="ss">:session_cookie</span><span class="p">,</span> <span class="ss">:string</span><span class="p">)</span>
     <span class="n">field</span><span class="p">(</span><span class="ss">:valid_from</span><span class="p">,</span> <span class="ss">:utc_datetime</span><span class="p">)</span>
     <span class="n">field</span><span class="p">(</span><span class="ss">:valid_to</span><span class="p">,</span> <span class="ss">:utc_datetime</span><span class="p">)</span>
 
     <span class="n">belongs_to</span><span class="p">(</span><span class="ss">:user</span><span class="p">,</span> <span class="nc">MyApp.Domain.User</span><span class="p">)</span>
-  <span class="n">end</span></code></pre></div>
-<p>Very basic structure as it only contains fields for cookie and validity interval.</p>
-
+  <span class="k">end</span>
+</code></pre></div><p>Very basic structure as it only contains fields for cookie and validity interval.</p>
 <p>Alright, let&rsquo;s start. Create a new file somewhere in app&rsquo;s lib directory structure. In this case, I&rsquo;d put it right next to <code>endpoint.ex</code> in <code>lib/myapp</code> (or <code>apps/myapp_web/lib/myapp_web</code> in an umbrella project). Let&rsquo;s start with <code>init/1</code> and <code>get/3</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="n">defmodule</span> <span class="nc">MyApp.SessionStore</span> <span class="n">do</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="kd">defmodule</span> <span class="nc">MyApp.SessionStore</span> <span class="k">do</span>
   <span class="na">@moduledoc</span> <span class="sh">&#34;&#34;&#34;
 </span><span class="sh">  Session store that uses Postgres as backing storage.
 </span><span class="sh">  &#34;&#34;&#34;</span>
   
   <span class="na">@behaviour</span> <span class="nc">Plug.Session.Store</span>
 
-  <span class="n">alias</span> <span class="nc">MyApp.Api.Sessions</span>
-  <span class="n">alias</span> <span class="nc">MyApp.Domain.Session</span>
+  <span class="kn">alias</span> <span class="nc">MyApp.Api.Sessions</span>
+  <span class="kn">alias</span> <span class="nc">MyApp.Domain.Session</span>
 
-  <span class="n">def</span> <span class="n">init</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">init</span><span class="p">(</span><span class="n">opts</span><span class="p">)</span> <span class="k">do</span>
     <span class="c1"># By default, sessions will be valid for 1 hour</span>
     <span class="n">max_age</span> <span class="o">=</span> <span class="nc">Keyword</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">opts</span><span class="p">,</span> <span class="ss">:store_max_age</span><span class="p">,</span> <span class="mi">3600</span><span class="p">)</span>
 
     <span class="p">%{</span><span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">}</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-  <span class="n">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
-      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
-      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">do</span>
-    <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
-  <span class="n">end</span>
+  <span class="kd">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
+      <span class="ow">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
+      <span class="ow">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="no">nil</span> <span class="k">do</span>
+    <span class="p">{</span><span class="no">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+  <span class="k">end</span>
   
-  <span class="n">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">get</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="k">do</span>
     <span class="n">session</span> <span class="o">=</span> <span class="nc">Sessions</span><span class="o">.</span><span class="n">get_by_session_cookie</span><span class="p">(</span><span class="n">cookie</span><span class="p">)</span>
     <span class="n">get_for_session</span><span class="p">(</span><span class="n">cookie</span><span class="p">,</span> <span class="n">session</span><span class="p">)</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-  <span class="n">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">_cookie</span><span class="p">,</span> <span class="n">nil</span><span class="p">),</span> <span class="ss">do</span><span class="p">:</span> <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+  <span class="kd">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">_cookie</span><span class="p">,</span> <span class="no">nil</span><span class="p">),</span> <span class="ss">do</span><span class="p">:</span> <span class="p">{</span><span class="no">nil</span><span class="p">,</span> <span class="p">%{}}</span>
 
-  <span class="n">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">cookie</span><span class="p">,</span> <span class="p">%</span><span class="nc">Session</span><span class="p">{</span><span class="ss">user_id</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="ss">valid_to</span><span class="p">:</span> <span class="n">valid_to</span><span class="p">})</span> <span class="n">do</span>
+  <span class="kd">defp</span> <span class="n">get_for_session</span><span class="p">(</span><span class="n">cookie</span><span class="p">,</span> <span class="p">%</span><span class="nc">Session</span><span class="p">{</span><span class="ss">user_id</span><span class="p">:</span> <span class="n">user_id</span><span class="p">,</span> <span class="ss">valid_to</span><span class="p">:</span> <span class="n">valid_to</span><span class="p">})</span> <span class="k">do</span>
     <span class="n">now</span> <span class="o">=</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">utc_now</span><span class="p">()</span>
 
-    <span class="n">if</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">now</span><span class="p">,</span> <span class="n">valid_to</span><span class="p">)</span> <span class="o">==</span> <span class="ss">:lt</span> <span class="n">do</span>
+    <span class="k">if</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">compare</span><span class="p">(</span><span class="n">now</span><span class="p">,</span> <span class="n">valid_to</span><span class="p">)</span> <span class="o">==</span> <span class="ss">:lt</span> <span class="k">do</span>
       <span class="p">{</span><span class="n">cookie</span><span class="p">,</span> <span class="p">%{</span><span class="s2">&#34;user_id&#34;</span> <span class="o">=&gt;</span> <span class="n">id</span><span class="p">}}</span>
-    <span class="n">else</span>
-      <span class="p">{</span><span class="n">nil</span><span class="p">,</span> <span class="p">%{}}</span>
-    <span class="n">end</span>
-  <span class="n">end</span>
+    <span class="k">else</span>
+      <span class="p">{</span><span class="no">nil</span><span class="p">,</span> <span class="p">%{}}</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
   
   <span class="c1"># continued below ...</span>
-<span class="n">end</span></code></pre></div>
-<p>The <code>init/1</code> function is passed the <code>Plug.Session</code> configuration params, which we check for <code>store_max_age</code> or default to 1 hour if param wasn&rsquo;t set.</p>
-
+<span class="k">end</span>
+</code></pre></div><p>The <code>init/1</code> function is passed the <code>Plug.Session</code> configuration params, which we check for <code>store_max_age</code> or default to 1 hour if param wasn&rsquo;t set.</p>
 <p>The <code>get/3</code> is more insteresting. First, we pattern match on empty cookie and in that case return empty values as well. Otherwise, we try to load the session using that cookie. If the session is found, then we check if it&rsquo;s still valid.</p>
-
 <p>Next on, the <code>put/4</code> function:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">def</span> <span class="n">put</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span> <span class="n">do</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="kd">def</span> <span class="n">put</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">term</span><span class="p">,</span> <span class="n">opts</span><span class="p">)</span> <span class="k">do</span>
     <span class="n">user_id</span> <span class="o">=</span> <span class="n">term</span><span class="p">[</span><span class="s2">&#34;user_id&#34;</span><span class="p">]</span>
 
-    <span class="n">if</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">and</span> <span class="n">user_id</span> <span class="o">!=</span> <span class="n">nil</span> <span class="n">do</span>
+    <span class="k">if</span> <span class="n">cookie</span> <span class="o">==</span> <span class="no">nil</span> <span class="ow">and</span> <span class="n">user_id</span> <span class="o">!=</span> <span class="no">nil</span> <span class="k">do</span>
       <span class="p">%{</span><span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">}</span> <span class="o">=</span> <span class="n">opts</span>
 
       <span class="n">valid_from</span> <span class="o">=</span> <span class="nc">DateTime</span><span class="o">.</span><span class="n">utc_now</span><span class="p">()</span>
@@ -886,31 +886,27 @@ The Phoenix framework is one of the most popular web frameworks in Elixir commun
       <span class="p">})</span>
 
       <span class="n">session_cookie</span>
-    <span class="n">else</span>
+    <span class="k">else</span>
       <span class="n">cookie</span>
-    <span class="n">end</span>
-  <span class="n">end</span></code></pre></div>
-<p>In <code>put/4</code>, we&rsquo;ll only create new session if there isn&rsquo;t already a session cookie and if the user is known. Otherwise, we just return the input <code>cookie</code>.</p>
-
+    <span class="k">end</span>
+  <span class="k">end</span>
+</code></pre></div><p>In <code>put/4</code>, we&rsquo;ll only create new session if there isn&rsquo;t already a session cookie and if the user is known. Otherwise, we just return the input <code>cookie</code>.</p>
 <p>The <code>delete/3</code> is only couple of lines:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="n">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
-      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
-      <span class="n">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="n">nil</span> <span class="n">do</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir">  <span class="kd">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span>
+      <span class="ow">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="s2">&#34;&#34;</span>
+      <span class="ow">when</span> <span class="n">cookie</span> <span class="o">==</span> <span class="no">nil</span> <span class="k">do</span>
     <span class="ss">:ok</span>
-  <span class="n">end</span>
+  <span class="k">end</span>
 
-  <span class="n">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="n">do</span>
+  <span class="kd">def</span> <span class="n">delete</span><span class="p">(</span><span class="n">_conn</span><span class="p">,</span> <span class="n">cookie</span><span class="p">,</span> <span class="n">_opts</span><span class="p">)</span> <span class="k">do</span>
     <span class="nc">Sessions</span><span class="o">.</span><span class="n">delete_by_session_cookie</span><span class="p">(</span><span class="n">sid</span><span class="p">)</span>
     <span class="ss">:ok</span>
-  <span class="n">end</span></code></pre></div>
-<p>We apply similar pattern as we did with <code>get/3</code>.</p>
-
+  <span class="k">end</span>
+</code></pre></div><p>We apply similar pattern as we did with <code>get/3</code>.</p>
 <p>And that&rsquo;s all there is to it! The heavy work is done by <code>Plug.Session</code> and <code>MyApp.Api.Sessions</code>. In essence, our custom store is just a way to bind the session plug with database.</p>
-
 <h2 id="step-two-configuration">Step two: configuration</h2>
-
 <p>We need to update <code>endpoint.ex</code>, because that&rsquo;s where the session plug is configured. We&rsquo;ll tell it to use our custom store and set the max age to 1 day:</p>
-<div class="highlight"><pre class="chroma"><code class="language-elixir" data-lang="elixir"><span class="c1"># ...</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-elixir" data-lang="elixir"><span class="c1"># ...</span>
 
 <span class="n">max_age</span> <span class="o">=</span> <span class="mi">86_400</span>
 
@@ -920,16 +916,11 @@ The Phoenix framework is one of the most popular web frameworks in Elixir commun
   <span class="ss">max_age</span><span class="p">:</span> <span class="n">max_age</span><span class="p">,</span>
   <span class="ss">store_max_age</span><span class="p">:</span> <span class="n">max_age</span>
   
-<span class="c1"># ...</span></code></pre></div>
-<p>The <code>key</code> config param is used to name the cookie in response headers (and subsequently in browser), for example:</p>
-
-<pre><code>set-cookie: _myapp_sid=bZsiztY6G+7UHr5BWMpWLVpUnr3paDTktFU/S1Jh5B1COqhaEyWaOuunrvJ/D8FvcMQzl1nw/z+1blhhtlFgAQ==; path=/; expires=Sun, 7 Apr 2019 11:28:31 GMT; max-age=86400; HttpOnly
-</code></pre>
-
-<p>Then there are two config params for max age. <code>max_age</code> is used internally by session plug and is unfortunately not exposed in options passed to the store. Therefore, we&rsquo;ve defined another config param, which won&rsquo;t be &lsquo;eaten&rsquo; by session plug.</p>
-
-<h2 id="that-s-all-folks">That&rsquo;s all folks</h2>
-
+<span class="c1"># ...</span>
+</code></pre></div><p>The <code>key</code> config param is used to name the cookie in response headers (and subsequently in browser), for example:</p>
+<pre tabindex="0"><code>set-cookie: _myapp_sid=bZsiztY6G+7UHr5BWMpWLVpUnr3paDTktFU/S1Jh5B1COqhaEyWaOuunrvJ/D8FvcMQzl1nw/z+1blhhtlFgAQ==; path=/; expires=Sun, 7 Apr 2019 11:28:31 GMT; max-age=86400; HttpOnly
+</code></pre><p>Then there are two config params for max age. <code>max_age</code> is used internally by session plug and is unfortunately not exposed in options passed to the store. Therefore, we&rsquo;ve defined another config param, which won&rsquo;t be &lsquo;eaten&rsquo; by session plug.</p>
+<h2 id="thats-all-folks">That&rsquo;s all folks</h2>
 <p>As you can see, it&rsquo;s very easy to implement a custom session store in Phoenix app. And for me personally, this is one of the best things about the framework: it&rsquo;s easy to extend it and the result is most of the time less than 100 lines of code.</p>
 ]]></content>
 		</item>
@@ -941,17 +932,13 @@ The Phoenix framework is one of the most popular web frameworks in Elixir commun
 			
 			<guid>https://blog.rebased.dev/posts/react-preload-data/</guid>
 			<description>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&amp;rsquo;s take a look how we can preload some data in React components.
-React documentation I always check the documentation first when exploring how to do something with React.</description>
-			<content type="html"><![CDATA[
-
-<p>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&rsquo;s take a look how we can preload some data in React components.</p>
-
+React documentation I always check the documentation first when exploring how to do something with React. There are hints and recommendations on how to do (or not do) things in React applications.</description>
+			<content type="html"><![CDATA[<p>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&rsquo;s take a look how we can preload some data in React components.</p>
 <h2 id="react-documentation">React documentation</h2>
-
-<p>I always check the documentation first when exploring how to do something with React. There are hints and recommendations on how to do (or not do) things in React applications. Sure enough, there&rsquo;s a <a href="https://reactjs.org/docs/faq-ajax.html" target="_blank">section</a> about fetching data from APIs. The recommended way is to use <code>componentDidMount()</code> lifecycle method:</p>
-<div class="highlight"><pre class="chroma"><code class="language-js" data-lang="js"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<p>I always check the documentation first when exploring how to do something with React. There are hints and recommendations on how to do (or not do) things in React applications. Sure enough, there&rsquo;s a <a href="https://reactjs.org/docs/faq-ajax.html">section</a> about fetching data from APIs. The recommended way is to use <code>componentDidMount()</code> lifecycle method:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="kr">class</span> <span class="nx">MyComponent</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="kr">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
     <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
       <span class="c1">// some state
 </span><span class="c1"></span>    <span class="p">};</span>
@@ -969,15 +956,12 @@ React documentation I always check the documentation first when exploring how to
     <span class="c1">// render the component using data from state
 </span><span class="c1"></span>  <span class="p">}</span>
 <span class="p">}</span>
-</code></pre></div>
-<p>This works as expected: data is fetched and then rendered. The problem with this solution is that our component contains data loading logic that is coupled to a lifecycle method. This means it&rsquo;s harder to test and reuse the component. Ideally, we&rsquo;d want to move this logic out and instead inject <code>items</code> array as a property into this component. That way, we can easily test it and use it in Storybook, for example.</p>
-
+</code></pre></div><p>This works as expected: data is fetched and then rendered. The problem with this solution is that our component contains data loading logic that is coupled to a lifecycle method. This means it&rsquo;s harder to test and reuse the component. Ideally, we&rsquo;d want to move this logic out and instead inject <code>items</code> array as a property into this component. That way, we can easily test it and use it in Storybook, for example.</p>
 <h2 id="wrapper-component">Wrapper component</h2>
-
 <p>To solve this tight coupling, one may instead move the fetching logic into a wrapper component. This means that we can define a separate component that just does the fetching, then renders <code>MyComponent</code> with <code>items</code> prop.</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">class</span> <span class="nx">MyComponent</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
     
     <span class="k">if</span> <span class="p">(</span><span class="nx">itemsLoaded</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="p">(</span>
@@ -991,9 +975,9 @@ React documentation I always check the documentation first when exploring how to
   <span class="p">}</span>
 <span class="p">}</span>
 
-<span class="k">class</span> <span class="nx">Wrapper</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<span class="kr">class</span> <span class="nx">Wrapper</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="kr">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
     <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
       <span class="nx">items</span><span class="o">:</span> <span class="p">[],</span>
       <span class="nx">itemsLoaded</span><span class="o">:</span> <span class="kc">false</span>
@@ -1012,23 +996,22 @@ React documentation I always check the documentation first when exploring how to
   <span class="p">}</span>
 
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">items</span><span class="p">,</span> <span class="nx">itemsLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
     
     <span class="k">return</span> <span class="p">(</span>
       <span class="p">&lt;</span><span class="nt">MyComponent</span>
-        <span class="na">items</span><span class="o">=</span><span class="s">{items}</span>
-        <span class="na">itemsLoaded</span><span class="o">=</span><span class="s">{itemsLoaded}</span>
+        <span class="na">items</span><span class="o">=</span><span class="p">{</span><span class="nx">items</span><span class="p">}</span>
+        <span class="na">itemsLoaded</span><span class="o">=</span><span class="p">{</span><span class="nx">itemsLoaded</span><span class="p">}</span>
         <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
       <span class="p">/&gt;</span>
     <span class="p">);</span>
   <span class="p">}</span>
-<span class="p">}</span></code></pre></div>
-<p>Ok, so now we can use the <code>Wrapper</code> component elsewhere in our app&rsquo;s pages and the inner <code>MyComponent</code> in tests and Storybook. Great! But we&rsquo;re not satisfied yet, because the pattern of preloading data is common for different components and api calls, and it would be tedious to write specific wrapper components for every use-case.</p>
-
+<span class="p">}</span>
+</code></pre></div><p>Ok, so now we can use the <code>Wrapper</code> component elsewhere in our app&rsquo;s pages and the inner <code>MyComponent</code> in tests and Storybook. Great! But we&rsquo;re not satisfied yet, because the pattern of preloading data is common for different components and api calls, and it would be tedious to write specific wrapper components for every use-case.</p>
 <p>A more generalized version of wrapper component would accept the data fetching function as a property, then invoke it in <code>componentDidMount()</code> and pass the result to the inner component:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">class</span> <span class="nx">MyComponent</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
     
     <span class="k">if</span> <span class="p">(</span><span class="nx">dataLoaded</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="p">(</span>
@@ -1042,9 +1025,9 @@ React documentation I always check the documentation first when exploring how to
   <span class="p">}</span>
 <span class="p">}</span>
 
-<span class="k">class</span> <span class="nx">Wrapper</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<span class="kr">class</span> <span class="nx">Wrapper</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
-    <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+    <span class="kr">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
     <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
       <span class="nx">data</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
       <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">false</span>
@@ -1062,13 +1045,13 @@ React documentation I always check the documentation first when exploring how to
   <span class="p">}</span>
 
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
     
     <span class="k">return</span> <span class="p">(</span>
       <span class="p">&lt;</span><span class="nt">Component</span>
-        <span class="na">data</span><span class="o">=</span><span class="s">{data}</span>
-        <span class="na">dataLoaded</span><span class="o">=</span><span class="s">{dataLoaded}</span>
+        <span class="na">data</span><span class="o">=</span><span class="p">{</span><span class="nx">data</span><span class="p">}</span>
+        <span class="na">dataLoaded</span><span class="o">=</span><span class="p">{</span><span class="nx">dataLoaded</span><span class="p">}</span>
         <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
       <span class="p">/&gt;</span>
     <span class="p">);</span>
@@ -1076,21 +1059,20 @@ React documentation I always check the documentation first when exploring how to
 <span class="p">}</span>
 
 <span class="c1">// ... used elsewhere in the app as:
-</span><span class="c1"></span><span class="k">class</span> <span class="nx">MyPage</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+</span><span class="c1"></span><span class="kr">class</span> <span class="nx">MyPage</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span>
-      <span class="p">&lt;</span><span class="nt">Wrapper</span> <span class="na">component</span><span class="o">=</span><span class="s">{MyComponent}</span> <span class="na">preload</span><span class="o">=</span><span class="s">{actions.fetchItems}</span> <span class="p">/&gt;</span>
+      <span class="p">&lt;</span><span class="nt">Wrapper</span> <span class="na">component</span><span class="o">=</span><span class="p">{</span><span class="nx">MyComponent</span><span class="p">}</span> <span class="na">preload</span><span class="o">=</span><span class="p">{</span><span class="nx">actions</span><span class="p">.</span><span class="nx">fetchItems</span><span class="p">}</span> <span class="p">/&gt;</span>
     <span class="p">);</span>
   <span class="p">}</span>
-<span class="p">}</span></code></pre></div>
-<p>This generalized version looks like a good and reusable solution. However, it&rsquo;s still a bit ugly and it&rsquo;s annoying that <code>MyPage</code> has to be aware of preloading boilerplate. Wouldn&rsquo;t it be nice if we could encapsulate that within <code>MyComponent</code>?</p>
+<span class="p">}</span>
 
+</code></pre></div><p>This generalized version looks like a good and reusable solution. However, it&rsquo;s still a bit ugly and it&rsquo;s annoying that <code>MyPage</code> has to be aware of preloading boilerplate. Wouldn&rsquo;t it be nice if we could encapsulate that within <code>MyComponent</code>?</p>
 <h2 id="higher-order-component">Higher-Order component</h2>
-
-<p>We can reach for another technique that is frequently used in React apps and that&rsquo;s higher-order components. As React documentation <a href="https://reactjs.org/docs/higher-order-components.html" target="_blank">explains</a>, a higher-order component is a function that takes a component and returns a new component. The idea is that instead of having a wrapper component, we define a higher-order component for prefetching and then wrap <code>MyComponent</code> with <code>prefetch()</code> function. This is what we want to achieve:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">MyComponent</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<p>We can reach for another technique that is frequently used in React apps and that&rsquo;s higher-order components. As React documentation <a href="https://reactjs.org/docs/higher-order-components.html">explains</a>, a higher-order component is a function that takes a component and returns a new component. The idea is that instead of having a wrapper component, we define a higher-order component for prefetching and then wrap <code>MyComponent</code> with <code>prefetch()</code> function. This is what we want to achieve:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">class</span> <span class="nx">MyComponent</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
     
     <span class="k">if</span> <span class="p">(</span><span class="nx">dataLoaded</span><span class="p">)</span> <span class="p">{</span>
       <span class="k">return</span> <span class="p">(</span>
@@ -1104,23 +1086,23 @@ React documentation I always check the documentation first when exploring how to
   <span class="p">}</span>
 <span class="p">}</span>
 
-<span class="k">class</span> <span class="nx">MyComponentWithData</span> <span class="o">=</span> <span class="nx">prefetch</span><span class="p">({</span>
+<span class="kr">class</span> <span class="nx">MyComponentWithData</span> <span class="o">=</span> <span class="nx">prefetch</span><span class="p">({</span>
   <span class="nx">onComponentDidMount</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">fetchItems</span>
 <span class="p">})(</span><span class="nx">MyComponent</span><span class="p">);</span>
 
 <span class="c1">// ... used elsewhere in the app as:
-</span><span class="c1"></span><span class="k">class</span> <span class="nx">MyPage</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+</span><span class="c1"></span><span class="kr">class</span> <span class="nx">MyPage</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
     <span class="k">return</span> <span class="p">(</span>
       <span class="p">&lt;</span><span class="nt">MyComponentWithData</span> <span class="p">/&gt;</span>
     <span class="p">);</span>
   <span class="p">}</span>
-<span class="p">}</span></code></pre></div>
-<p>This is much better. <code>MyPage</code> does not care about intricacies of loading data necessary for <code>MyComponent</code> rendering. The <code>prefetch()</code> function looks quite similar to previous <code>WrapperComponent</code>, except that it takes a function as parameter, which is then executed in <code>componentDidMount()</code> method, and returns a function which in turn returns a React component:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">const</span> <span class="nx">prefetch</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">onComponentDidMount</span> <span class="p">})</span> <span class="p">=&gt;</span>
-  <span class="nx">WrappedComponent</span> <span class="p">=&gt;</span> <span class="k">class</span> <span class="k">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
+<span class="p">}</span>
+</code></pre></div><p>This is much better. <code>MyPage</code> does not care about intricacies of loading data necessary for <code>MyComponent</code> rendering. The <code>prefetch()</code> function looks quite similar to previous <code>WrapperComponent</code>, except that it takes a function as parameter, which is then executed in <code>componentDidMount()</code> method, and returns a function which in turn returns a React component:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">const</span> <span class="nx">prefetch</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">onComponentDidMount</span> <span class="p">})</span> <span class="p">=&gt;</span>
+  <span class="nx">WrappedComponent</span> <span class="p">=&gt;</span> <span class="kr">class</span> <span class="kr">extends</span> <span class="nx">React</span><span class="p">.</span><span class="nx">Component</span> <span class="p">{</span>
     <span class="nx">constructor</span><span class="p">(</span><span class="nx">props</span><span class="p">)</span> <span class="p">{</span>
-      <span class="k">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
+      <span class="kr">super</span><span class="p">(</span><span class="nx">props</span><span class="p">);</span>
       <span class="k">this</span><span class="p">.</span><span class="nx">state</span> <span class="o">=</span> <span class="p">{</span>
         <span class="nx">data</span><span class="o">:</span> <span class="kc">null</span><span class="p">,</span>
         <span class="nx">dataLoaded</span><span class="o">:</span> <span class="kc">false</span>
@@ -1138,21 +1120,20 @@ React documentation I always check the documentation first when exploring how to
     <span class="p">}</span>
 
     <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-      <span class="k">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
-      <span class="k">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
+      <span class="kr">const</span> <span class="p">{</span> <span class="nx">component</span><span class="o">:</span> <span class="nx">Component</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+      <span class="kr">const</span> <span class="p">{</span> <span class="nx">data</span><span class="p">,</span> <span class="nx">dataLoaded</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">state</span><span class="p">;</span>
     
       <span class="k">return</span> <span class="p">(</span>
         <span class="p">&lt;</span><span class="nt">WrappedComponent</span>
-          <span class="na">data</span><span class="o">=</span><span class="s">{data}</span>
-          <span class="na">dataLoaded</span><span class="o">=</span><span class="s">{dataLoaded}</span>
+          <span class="na">data</span><span class="o">=</span><span class="p">{</span><span class="nx">data</span><span class="p">}</span>
+          <span class="na">dataLoaded</span><span class="o">=</span><span class="p">{</span><span class="nx">dataLoaded</span><span class="p">}</span>
           <span class="p">{</span><span class="na">...this.props</span><span class="p">}</span>
         <span class="p">/&gt;</span>
       <span class="p">);</span>
     <span class="p">}</span>
-  <span class="p">}</span></code></pre></div>
-<p>We could generalize the <code>prefetch()</code> function even more: it could take in other lifecycle methods as well (<code>componentDidUpdate()</code>, <code>componentWillReceiveProps()</code>, and so on). The function would become somewhat complex, though, due to state management and wrapped components would have to know exactly what state is passed to them as props. It would be quite brittle design. To solve that I recommend to reach for <a href="https://redux.js.org/" target="_blank">Redux</a>, because then the state management isn&rsquo;t baked into components.</p>
-
-<p>As you might guess, the pattern I described in this post isn&rsquo;t something new. There is also a cool little package called <a href="https://github.com/JamieDixon/react-lifecycle-component" target="_blank">react-lifecycle-component</a>, which you can use to solve prefetching data in generic way. Works great with Redux, too.</p>
+  <span class="p">}</span>
+</code></pre></div><p>We could generalize the <code>prefetch()</code> function even more: it could take in other lifecycle methods as well (<code>componentDidUpdate()</code>, <code>componentWillReceiveProps()</code>, and so on). The function would become somewhat complex, though, due to state management and wrapped components would have to know exactly what state is passed to them as props. It would be quite brittle design. To solve that I recommend to reach for <a href="https://redux.js.org/">Redux</a>, because then the state management isn&rsquo;t baked into components.</p>
+<p>As you might guess, the pattern I described in this post isn&rsquo;t something new. There is also a cool little package called <a href="https://github.com/JamieDixon/react-lifecycle-component">react-lifecycle-component</a>, which you can use to solve prefetching data in generic way. Works great with Redux, too.</p>
 ]]></content>
 		</item>
 		
@@ -1164,94 +1145,60 @@ React documentation I always check the documentation first when exploring how to
 			<guid>https://blog.rebased.dev/posts/typescript-react-native/</guid>
 			<description>In this post I will describe how to setup a simple Typescript project for React Native app with Redux and Thunks. All of these tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.
 There are three main reasons it can be difficult to set up a React Native project with Typescript:</description>
-			<content type="html"><![CDATA[
-
-<p>In this post I will describe how to setup a simple  <a href="https://www.typescriptlang.org/" target="_blank">Typescript</a> project for <a href="https://facebook.github.io/react-native/" target="_blank">React Native</a> app with <a href="https://react-redux.js.org/" target="_blank">Redux</a> and <a href="https://github.com/reduxjs/redux-thunk" target="_blank">Thunks</a>. All of these tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.</p>
-
+			<content type="html"><![CDATA[<p>In this post I will describe how to setup a simple  <a href="https://www.typescriptlang.org/">Typescript</a> project for <a href="https://facebook.github.io/react-native/">React Native</a> app with <a href="https://react-redux.js.org/">Redux</a> and <a href="https://github.com/reduxjs/redux-thunk">Thunks</a>. All of these tools are widely used, thouroughly documented, open source and with very active communities, but despite that it may be a challenge to wire them up correctly. Especially if you are just starting with Typescript.</p>
 <p>There are three main reasons it can be difficult to set up a React Native project with Typescript:</p>
-
 <ul>
-<li><p>Type definitions for packages often lag behind releases.</p>
-
-<p>Many packages have a separate package for types, which can be (and often is) maintained by different author than the original package. How fast the types package keeps up with the original package varies a lot.</p></li>
-
-<li><p>Typescript&rsquo;s error messages can often be cryptic or just plain misleading, but it gets easier as you get more experienced with Typescript and various typings packages.</p></li>
-
-<li><p>Authors of various typings packages tend to make breaking changes on minor version bumps.</p></li>
+<li>
+<p>Type definitions for packages often lag behind releases.</p>
+<p>Many packages have a separate package for types, which can be (and often is) maintained by different author than the original package. How fast the types package keeps up with the original package varies a lot.</p>
+</li>
+<li>
+<p>Typescript&rsquo;s error messages can often be cryptic or just plain misleading, but it gets easier as you get more experienced with Typescript and various typings packages.</p>
+</li>
+<li>
+<p>Authors of various typings packages tend to make breaking changes on minor version bumps.</p>
+</li>
 </ul>
-
 <p>Therefore, if you struggle with typing errors even though you&rsquo;re following simple redux-related tutorials, you probably can fix them by downgrading a dependency or its type definitions.</p>
-
 <h2 id="start-with-official-guide">Start with official guide</h2>
-
 <blockquote>
-<p>Here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux" target="_blank">Github repo</a> of this project, if you want to jump straight into the code.</p>
+<p>Here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux">Github repo</a> of this project, if you want to jump straight into the code.</p>
 </blockquote>
-
-<p>Let&rsquo;s start with the <a href="https://facebook.github.io/react-native/docs/getting-started.html" target="_blank">official guide</a>. Select &lsquo;Building Projects with Native Code&rsquo; tab and install dependencies for the chosen platform (Android and/or iOS). However, stop at &lsquo;Creating a new application&rsquo; section. In that section the recommendation is to run following init command:</p>
-
-<pre><code>react-native init AwesomeProject
-</code></pre>
-
-<p>Which is fine in general, but we want to init the new project with Typescript support. Therefore, run following command instead:</p>
-
-<pre><code>react-native init ReactNativeRedux --template typescript
-</code></pre>
-
-<p>After the command finishes, go into the newly created project directory and run:</p>
-
-<pre><code>node setup.js
-</code></pre>
-
-<p>This will remove unused files and add <code>tsc</code> command. To verify this setup, let&rsquo;s run typescript compiler:</p>
-
-<pre><code>$ yarn tsc
+<p>Let&rsquo;s start with the <a href="https://facebook.github.io/react-native/docs/getting-started.html">official guide</a>. Select &lsquo;Building Projects with Native Code&rsquo; tab and install dependencies for the chosen platform (Android and/or iOS). However, stop at &lsquo;Creating a new application&rsquo; section. In that section the recommendation is to run following init command:</p>
+<pre tabindex="0"><code>react-native init AwesomeProject
+</code></pre><p>Which is fine in general, but we want to init the new project with Typescript support. Therefore, run following command instead:</p>
+<pre tabindex="0"><code>react-native init ReactNativeRedux --template typescript
+</code></pre><p>After the command finishes, go into the newly created project directory and run:</p>
+<pre tabindex="0"><code>node setup.js
+</code></pre><p>This will remove unused files and add <code>tsc</code> command. To verify this setup, let&rsquo;s run typescript compiler:</p>
+<pre tabindex="0"><code>$ yarn tsc
 yarn run v1.13.0
 $ tsc
 ✨Done in 2.84s.
-</code></pre>
-
-<p>Great, no errors. Now start the emulator and verify that the app builds and runs:</p>
-
-<pre><code>react-native run-android
-</code></pre>
-
-<p>I&rsquo;ve done the same and this is how it looks (VS Code + android emulator):</p>
-
-<p><a href="/posts/typescript-react-native/1.png"><img src="/posts/typescript-react-native/1.small.png" alt="React Native Hello World" /></a></p>
-
+</code></pre><p>Great, no errors. Now start the emulator and verify that the app builds and runs:</p>
+<pre tabindex="0"><code>react-native run-android
+</code></pre><p>I&rsquo;ve done the same and this is how it looks (VS Code + android emulator):</p>
+<p><a href="/posts/typescript-react-native/1.png"><img src="/posts/typescript-react-native/1.small.png" alt="React Native Hello World"></a></p>
 <h2 id="dive-into-redux">Dive into redux</h2>
-
 <p>Time to add redux and react-redux:</p>
-
-<pre><code>yarn add redux react-redux
-</code></pre>
-
-<p>and type definitions:</p>
-
-<pre><code>yarn add -D @types/react-redux
-</code></pre>
-
-<p>We don&rsquo;t need to add a separate @types dependency for redux, because it already includes the types.</p>
-
+<pre tabindex="0"><code>yarn add redux react-redux
+</code></pre><p>and type definitions:</p>
+<pre tabindex="0"><code>yarn add -D @types/react-redux
+</code></pre><p>We don&rsquo;t need to add a separate @types dependency for redux, because it already includes the types.</p>
 <p>Having redux in the project, we can start using it! Let&rsquo;s add a button with <code>onPress</code> event. When user presses the button the app should display current time. What will happen behind the scene:</p>
-
 <ul>
 <li>Button press will fire off a redux action.</li>
 <li>Action will update redux store.</li>
 <li>This will trigger render of App component, which will display current time due to changed state.</li>
 </ul>
-
 <p>Sounds simple and hopefully the solution will be simple, too. To begin with, we need to translate the points above into more actionable tasks:</p>
-
 <ol>
 <li>Add Redux store with an action and a reducer.</li>
 <li>Wire the App component with redux store.</li>
 <li>Add a button that fires off our redux action.</li>
 </ol>
-
 <p>First, we will create a new file <code>store.ts</code> with our implementation for the store. We need one action, one reducer to update the application state and then the store itself:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Reducer</span><span class="p">,</span> <span class="nx">createStore</span><span class="p">,</span> <span class="nx">Store</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Reducer</span><span class="p">,</span> <span class="nx">createStore</span><span class="p">,</span> <span class="nx">Store</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
 
 <span class="kr">export</span> <span class="kr">enum</span> <span class="nx">Actions</span> <span class="p">{</span>
   <span class="nx">GetTime</span> <span class="o">=</span> <span class="s2">&#34;GET_TIME&#34;</span>
@@ -1265,8 +1212,8 @@ $ tsc
   <span class="nx">currentTime</span>: <span class="kt">null</span>
 <span class="p">};</span>
 
-<span class="kr">const</span> <span class="nx">reducer</span>: <span class="kt">Reducer</span><span class="o">&lt;</span><span class="nx">ApplicationState</span><span class="o">&gt;</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span> <span class="o">=</span> <span class="nx">initialState</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
+<span class="kr">const</span> <span class="nx">reducer</span>: <span class="kt">Reducer</span><span class="p">&lt;</span><span class="nt">ApplicationState</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span> <span class="o">=</span> <span class="nx">initialState</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="kr">type</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">case</span> <span class="nx">Actions.GetTime</span>:
       <span class="kt">return</span> <span class="p">{</span>
         <span class="nx">currentTime</span>: <span class="kt">new</span> <span class="nb">Date</span><span class="p">()</span>
@@ -1276,113 +1223,103 @@ $ tsc
   <span class="p">}</span>
 <span class="p">};</span>
 
-<span class="kr">export</span> <span class="k">default</span> <span class="p">()</span><span class="o">:</span> <span class="nx">Store</span><span class="o">&lt;</span><span class="nx">ApplicationState</span><span class="o">&gt;</span> <span class="o">=&gt;</span> <span class="nx">createStore</span><span class="p">(</span><span class="nx">reducer</span><span class="p">);</span></code></pre></div>
-<p>There are multiple things going on in this file:</p>
-
+<span class="kr">export</span> <span class="k">default</span> <span class="p">()</span><span class="o">:</span> <span class="nx">Store</span><span class="p">&lt;</span><span class="nt">ApplicationState</span><span class="p">&gt;</span> <span class="o">=&gt;</span> <span class="nx">createStore</span><span class="p">(</span><span class="nx">reducer</span><span class="p">);</span>
+</code></pre></div><p>There are multiple things going on in this file:</p>
 <ul>
 <li>First we have an <code>enum</code> to define our action.</li>
 <li>Then we define interface <code>ApplicationState</code> that has single property for current time. So, our application will have very minimalistic state. Note the type of current time property is <code>Date | null</code>. If we just had <code>Date</code> as a type, then we couldn&rsquo;t have set the property to null in the <code>initialState</code> variable.</li>
 <li>The reducer is your vanilla reducer, except that it&rsquo;s typed, so it must return object of type <code>ApplicationState</code>. We use enum in the switch statement - we can do that, because redux&rsquo;s action types are just strings, the same as our enum values.</li>
 <li>Finally, we export the function to create our store. It just calls <code>createStore()</code> function from redux, but notice again that it&rsquo;s typed. This means, for example, that the dispatch functions will be typed as well (as we&rsquo;ll see later in the App component).</li>
 </ul>
-
 <p>In a real world app you&rsquo;ll want to split actions and  reducers into separate modules. Maybe center them around screens and features.</p>
-
 <p>Now that we&rsquo;ve implemented a minimal redux store, it&rsquo;s time to go to our main App component. Open <code>App.tsx</code> and see that the generated source is quite simple: <code>App</code> component that renders some text and associated <code>styles</code> object. Our task is to connect the App component to redux store and extend the <code>render()</code> function to include a button. Let&rsquo;s go step by step:</p>
-
 <ol>
-<li><p>The <code>Props</code> interface is empty. We need to add two properties, one for current time and one to trigger &lsquo;GetTime&rsquo; action. We could just add both to the <code>Props</code> interface, however it&rsquo;s better to split the interface into two, one holding regular props, the other just the props to trigger actions:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">interface</span> <span class="nx">StateProps</span> <span class="p">{</span>
+<li>
+<p>The <code>Props</code> interface is empty. We need to add two properties, one for current time and one to trigger &lsquo;GetTime&rsquo; action. We could just add both to the <code>Props</code> interface, however it&rsquo;s better to split the interface into two, one holding regular props, the other just the props to trigger actions:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">interface</span> <span class="nx">StateProps</span> <span class="p">{</span>
   <span class="nx">currentTime</span>: <span class="kt">Date</span> <span class="o">|</span> <span class="kc">null</span><span class="p">;</span>
 <span class="p">}</span>
 
 <span class="kr">interface</span> <span class="nx">DispatchProps</span> <span class="p">{</span>
   <span class="nx">getTime</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="k">void</span><span class="p">;</span>
 <span class="p">}</span>
-    
-<span class="nx">type</span> <span class="nx">Props</span> <span class="o">=</span> <span class="nx">StateProps</span> <span class="o">&amp;</span> <span class="nx">DispatchProps</span><span class="p">;</span></code></pre></div></li>
 
-<li><p>The <code>render()</code> function needs to have a button and should also display current time if it&rsquo;s available:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">class</span> <span class="nx">App</span> <span class="k">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
+<span class="kr">type</span> <span class="nx">Props</span> <span class="o">=</span> <span class="nx">StateProps</span> <span class="o">&amp;</span> <span class="nx">DispatchProps</span><span class="p">;</span>
+</code></pre></div></li>
+<li>
+<p>The <code>render()</code> function needs to have a button and should also display current time if it&rsquo;s available:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">class</span> <span class="nx">App</span> <span class="kr">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span> <span class="nx">currentTime</span><span class="p">,</span> <span class="nx">getTime</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
+    <span class="kr">const</span> <span class="p">{</span> <span class="nx">currentTime</span><span class="p">,</span> <span class="nx">getTime</span> <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
 
     <span class="k">return</span> <span class="p">(</span>
-      <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.container}</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;</span><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">React</span> <span class="nx">Native</span><span class="o">!</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.instructions}</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">container</span><span class="p">}&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;</span><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">React</span> <span class="nx">Native</span><span class="o">!</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">instructions</span><span class="p">}&gt;</span>
           <span class="nx">To</span> <span class="nx">get</span> <span class="nx">started</span><span class="p">,</span> <span class="nx">edit</span> <span class="nx">App</span><span class="p">.</span><span class="nx">tsx</span>
         <span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.instructions}</span><span class="p">&gt;{</span><span class="nx">instructions</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-            
-        <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.button}</span> <span class="na">onPress</span><span class="o">=</span><span class="s">{getTime}</span><span class="p">&gt;</span>
-          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.buttonText}</span><span class="p">&gt;</span><span class="nx">Get</span> <span class="nx">time</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">instructions</span><span class="p">}&gt;{</span><span class="nx">instructions</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+
+        <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">button</span><span class="p">}</span> <span class="na">onPress</span><span class="o">=</span><span class="p">{</span><span class="nx">getTime</span><span class="p">}&gt;</span>
+          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">buttonText</span><span class="p">}&gt;</span><span class="nx">Get</span> <span class="nx">time</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
         <span class="p">&lt;/</span><span class="nt">TouchableOpacity</span><span class="p">&gt;</span>
         <span class="p">{</span><span class="nx">currentTime</span> <span class="o">&amp;&amp;</span> <span class="p">(</span>
-          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;{</span><span class="nx">currentTime</span><span class="p">.</span><span class="nx">toTimeString</span><span class="p">()}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;{</span><span class="nx">currentTime</span><span class="p">.</span><span class="nx">toTimeString</span><span class="p">()}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
         <span class="p">)}</span>
       <span class="p">&lt;/</span><span class="nt">View</span><span class="p">&gt;</span>
     <span class="p">);</span>
   <span class="p">}</span>
-<span class="p">}</span></code></pre></div></li>
-
-<li><p>The next step is crucial in giving the App access to redux store:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">const</span> <span class="nx">ConnectedApp</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
+<span class="p">}</span>
+</code></pre></div></li>
+<li>
+<p>The next step is crucial in giving the App access to redux store:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">const</span> <span class="nx">ConnectedApp</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
   <span class="p">(</span><span class="nx">state</span>: <span class="kt">ApplicationState</span><span class="p">)</span><span class="o">:</span> <span class="nx">StateProps</span> <span class="o">=&gt;</span> <span class="p">({</span>
     <span class="nx">currentTime</span>: <span class="kt">state.currentTime</span>
   <span class="p">}),</span>
   <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">Dispatch</span><span class="p">)</span><span class="o">:</span> <span class="nx">DispatchProps</span> <span class="o">=&gt;</span> <span class="p">({</span>
-    <span class="nx">getTime</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">({</span> <span class="nx">type</span>: <span class="kt">Actions.GetTime</span> <span class="p">})</span>
+    <span class="nx">getTime</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">({</span> <span class="kr">type</span><span class="o">:</span> <span class="nx">Actions</span><span class="p">.</span><span class="nx">GetTime</span> <span class="p">})</span>
   <span class="p">})</span>
-<span class="p">)(</span><span class="nx">App</span><span class="p">);</span></code></pre></div>
-<p>The <a href="https://react-redux.js.org/api/connect" target="_blank">connect()</a> function is the key piece of react-redux api. It accepts multiple params, but for our use case we need the first two: mapStateToProps and mapDispatchToProps. <code>mapStateToProps</code> is the function mapping the application state to component properties, while <code>mapDispatchToProps</code> maps action calls to the same component properties. Note how each of these two functions is typed using previously defined interfaces (StateProps and DispatchProps).</p></li>
+<span class="p">)(</span><span class="nx">App</span><span class="p">);</span>
+</code></pre></div><p>The <a href="https://react-redux.js.org/api/connect">connect()</a> function is the key piece of react-redux api. It accepts multiple params, but for our use case we need the first two: mapStateToProps and mapDispatchToProps. <code>mapStateToProps</code> is the function mapping the application state to component properties, while <code>mapDispatchToProps</code> maps action calls to the same component properties. Note how each of these two functions is typed using previously defined interfaces (StateProps and DispatchProps).</p>
+</li>
+<li>
+<p>Now that we have a connected App component, we have to make sure it is exported with a redux store instance. To do that, we&rsquo;ll define a <code>makeApp()</code> function:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">import</span> <span class="p">{</span> <span class="nx">Provider</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;react-redux&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">createStore</span> <span class="nx">from</span> <span class="s2">&#34;./store&#34;</span><span class="p">;</span>
 
-<li><p>Now that we have a connected App component, we have to make sure it is exported with a redux store instance. To do that, we&rsquo;ll define a <code>makeApp()</code> function:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">import</span> <span class="p">{</span> <span class="nx">Provider</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;react-redux&#34;</span><span class="p">;</span>
-<span class="k">import</span> <span class="nx">createStore</span> <span class="nx">from</span> <span class="s2">&#34;./store&#34;</span><span class="p">;</span>
-    
-<span class="k">const</span> <span class="nx">makeApp</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
-  <span class="k">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">createStore</span><span class="p">();</span>
+<span class="kr">const</span> <span class="nx">makeApp</span> <span class="o">=</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">createStore</span><span class="p">();</span>
 
   <span class="k">return</span> <span class="p">(</span>
-    <span class="p">&lt;</span><span class="nt">Provider</span> <span class="na">store</span><span class="o">=</span><span class="s">{store}</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">Provider</span> <span class="na">store</span><span class="o">=</span><span class="p">{</span><span class="nx">store</span><span class="p">}&gt;</span>
       <span class="p">&lt;</span><span class="nt">ConnectedApp</span> <span class="p">/&gt;</span>
     <span class="p">&lt;/</span><span class="nt">Provider</span><span class="p">&gt;</span>
   <span class="p">);</span>
 <span class="p">};</span>
-<span class="k">export</span> <span class="k">default</span> <span class="nx">makeApp</span><span class="p">;</span></code></pre></div></li>
-
-<li><p>And last step is to update the <code>index.js</code> file. Instead of using directly <code>App</code> component, it will use <code>makeApp()</code> function instead:</p>
-<div class="highlight"><pre class="chroma"><code class="language-js" data-lang="js"><span class="k">import</span> <span class="p">{</span> <span class="nx">AppRegistry</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;react-native&#34;</span><span class="p">;</span>
-<span class="k">import</span> <span class="nx">makeApp</span> <span class="nx">from</span> <span class="s2">&#34;./App&#34;</span><span class="p">;</span>
-<span class="k">import</span> <span class="p">{</span> <span class="nx">name</span> <span class="nx">as</span> <span class="nx">appName</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./app.json&#34;</span><span class="p">;</span>
+<span class="kr">export</span> <span class="k">default</span> <span class="nx">makeApp</span><span class="p">;</span>
+</code></pre></div></li>
+<li>
+<p>And last step is to update the <code>index.js</code> file. Instead of using directly <code>App</code> component, it will use <code>makeApp()</code> function instead:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-js" data-lang="js"><span class="kr">import</span> <span class="p">{</span> <span class="nx">AppRegistry</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;react-native&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">makeApp</span> <span class="nx">from</span> <span class="s2">&#34;./App&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">name</span> <span class="nx">as</span> <span class="nx">appName</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./app.json&#34;</span><span class="p">;</span>
 
 <span class="nx">AppRegistry</span><span class="p">.</span><span class="nx">registerComponent</span><span class="p">(</span><span class="nx">appName</span><span class="p">,</span> <span class="p">()</span> <span class="p">=&gt;</span> <span class="nx">makeApp</span><span class="p">);</span>
 </code></pre></div></li>
 </ol>
-
 <p>If all went well, then the app&rsquo;s button should now work:</p>
-
-<p><a href="/posts/typescript-react-native/2.png"><img src="/posts/typescript-react-native/2.small.png" alt="React Native Hello World" /></a></p>
-
+<p><a href="/posts/typescript-react-native/2.png"><img src="/posts/typescript-react-native/2.small.png" alt="React Native Hello World"></a></p>
 <h2 id="use-thunks">Use thunks</h2>
-
 <p>A thought may have crossed your mind that we&rsquo;ve gone through awful lot of trouble to get the current time into the App view. Indeed we have, but in doing so we&rsquo;ve managed to separate application state from react component, which is a good thing to do to keep you sane as your react application grows to many screens and components.</p>
-
-<p>Similarly, adding thunk middleware may seem as a very round-about way of doing delayed or async actions. Why do we want to complicate our life with thunks, if having <code>somethingAsync().then(...)</code> in <code>mapDispatchToProps()</code> already does the job? The reason you&rsquo;d want to use a middleware like thunks is to separate concerns and avoid repetition. Component should not care about implementation details of specific actions, like knowing which is async and which not. But read this great <a href="http://stackoverflow.com/questions/35411423/how-to-dispatch-a-redux-action-with-a-timeout/35415559#35415559" target="_blank">explanation</a> by Dan Abramov - he explains is better than I ever could.</p>
-
+<p>Similarly, adding thunk middleware may seem as a very round-about way of doing delayed or async actions. Why do we want to complicate our life with thunks, if having <code>somethingAsync().then(...)</code> in <code>mapDispatchToProps()</code> already does the job? The reason you&rsquo;d want to use a middleware like thunks is to separate concerns and avoid repetition. Component should not care about implementation details of specific actions, like knowing which is async and which not. But read this great <a href="http://stackoverflow.com/questions/35411423/how-to-dispatch-a-redux-action-with-a-timeout/35415559#35415559">explanation</a> by Dan Abramov - he explains is better than I ever could.</p>
 <p>First thing to start with thunks is to add the dependency:</p>
-
-<pre><code>yarn add redux-thunk
-</code></pre>
-
-<p>It already contains types, so we don&rsquo;t have to add a separate <code>@types/redux-thunk</code> dependency.</p>
-
-<p>Next, let&rsquo;s add another button which will fetch and show <a href="https://theysaidso.com/quote-of-the-day/" target="_blank">random quote of the day</a>. To complicate things a bit, we&rsquo;ll also fetch <a href="http:///wttr.in" target="_blank">current weather</a>. And we want to implement it in such way that the App component isn&rsquo;t aware of actual actions implementation. Async or not, serial or parallel, the App component shouldn&rsquo;t care.</p>
-
+<pre tabindex="0"><code>yarn add redux-thunk
+</code></pre><p>It already contains types, so we don&rsquo;t have to add a separate <code>@types/redux-thunk</code> dependency.</p>
+<p>Next, let&rsquo;s add another button which will fetch and show <a href="https://theysaidso.com/quote-of-the-day/">random quote of the day</a>. To complicate things a bit, we&rsquo;ll also fetch <a href="http:///wttr.in">current weather</a>. And we want to implement it in such way that the App component isn&rsquo;t aware of actual actions implementation. Async or not, serial or parallel, the App component shouldn&rsquo;t care.</p>
 <p>We&rsquo;ll begin by creating two files, <code>actions.ts</code> and <code>types.ts</code>, in order to have cleaner code. Let&rsquo;s start with <code>types.ts</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">AnyAction</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
-<span class="kr">import</span> <span class="p">{</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;redux-thunk&#34;</span><span class="p">;</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">AnyAction</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;redux-thunk&#34;</span><span class="p">;</span>
 
 <span class="kr">export</span> <span class="kr">interface</span> <span class="nx">ApplicationState</span> <span class="p">{</span>
   <span class="nx">currentTime</span>: <span class="kt">Date</span> <span class="o">|</span> <span class="kc">null</span><span class="p">;</span>
@@ -1398,26 +1335,29 @@ $ tsc
   <span class="nb">Error</span> <span class="o">=</span> <span class="s2">&#34;ERROR&#34;</span>
 <span class="p">}</span>
 
-<span class="kr">export</span> <span class="nx">type</span> <span class="nx">ThunkDispatch</span> <span class="o">=</span> <span class="nx">ThunkDispatch</span><span class="o">&lt;</span><span class="nx">ApplicationState</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="nx">AnyAction</span><span class="o">&gt;</span><span class="p">;</span></code></pre></div>
-<p>The file consists of three parts:</p>
-
+<span class="kr">export</span> <span class="kr">type</span> <span class="nx">ThunkDispatch</span> <span class="o">=</span> <span class="nx">ThunkDispatch</span><span class="p">&lt;</span><span class="nt">ApplicationState</span><span class="err">,</span> <span class="na">null</span><span class="err">,</span> <span class="na">AnyAction</span><span class="p">&gt;;</span>
+</code></pre></div><p>The file consists of three parts:</p>
 <ol>
-<li>We&rsquo;ve moved the <code>ActionTypes</code> enumeration from <code>store.ts</code> and expanded it with three new items: two actions types to fetch the daily quote and current weather, and also one for errors.</li>
-<li>We&rsquo;ve also moved and expanded the <code>ApplicationState</code> interface.</li>
-
-<li><p>Finally, we&rsquo;ve added type alias for <code>ThunkDispatch</code>. The interface is defined as parametrized type within <code>redux-thunk</code> dependency:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">export</span> <span class="kr">interface</span> <span class="nx">ThunkDispatch</span><span class="o">&lt;</span><span class="nx">S</span><span class="p">,</span> <span class="nx">E</span><span class="p">,</span> <span class="nx">A</span> <span class="kr">extends</span> <span class="nx">Action</span><span class="o">&gt;</span> <span class="p">{</span>
-  <span class="o">&lt;</span><span class="nx">T</span> <span class="kr">extends</span> <span class="nx">A</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">action</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="nx">T</span><span class="p">;</span>
-  <span class="o">&lt;</span><span class="nx">R</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">asyncAction</span>: <span class="kt">ThunkAction</span><span class="o">&lt;</span><span class="nx">R</span><span class="p">,</span> <span class="nx">S</span><span class="p">,</span> <span class="nx">E</span><span class="p">,</span> <span class="nx">A</span><span class="o">&gt;</span><span class="p">)</span><span class="o">:</span> <span class="nx">R</span><span class="p">;</span>
-<span class="p">}</span></code></pre></div>
-<p>The parameters are for state (S), action (A) and <a href="https://github.com/reduxjs/redux-thunk#injecting-a-custom-argument" target="_blank">extra argument</a> (E) types. For our needs, we will use our <code>ApplicationState</code>, <code>AnyAction</code> from the <code>redux</code> dependency and nothing for extra argument. Type alias will help us declutter action functions.</p></li>
+<li>
+<p>We&rsquo;ve moved the <code>ActionTypes</code> enumeration from <code>store.ts</code> and expanded it with three new items: two actions types to fetch the daily quote and current weather, and also one for errors.</p>
+</li>
+<li>
+<p>We&rsquo;ve also moved and expanded the <code>ApplicationState</code> interface.</p>
+</li>
+<li>
+<p>Finally, we&rsquo;ve added type alias for <code>ThunkDispatch</code>. The interface is defined as parametrized type within <code>redux-thunk</code> dependency:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">export</span> <span class="kr">interface</span> <span class="nx">ThunkDispatch</span><span class="p">&lt;</span><span class="nt">S</span><span class="err">,</span> <span class="na">E</span><span class="err">,</span> <span class="na">A</span> <span class="na">extends</span> <span class="na">Action</span><span class="p">&gt;</span> <span class="p">{</span>
+  <span class="p">&lt;</span><span class="nt">T</span> <span class="na">extends</span> <span class="na">A</span><span class="p">&gt;(</span><span class="nx">action</span>: <span class="kt">T</span><span class="p">)</span><span class="o">:</span> <span class="nx">T</span><span class="p">;</span>
+  <span class="p">&lt;</span><span class="nt">R</span><span class="p">&gt;(</span><span class="nx">asyncAction</span>: <span class="kt">ThunkAction</span><span class="p">&lt;</span><span class="nt">R</span><span class="err">,</span> <span class="na">S</span><span class="err">,</span> <span class="na">E</span><span class="err">,</span> <span class="na">A</span><span class="p">&gt;)</span><span class="o">:</span> <span class="nx">R</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><p>The parameters are for state (S), action (A) and <a href="https://github.com/reduxjs/redux-thunk#injecting-a-custom-argument">extra argument</a> (E) types. For our needs, we will use our <code>ApplicationState</code>, <code>AnyAction</code> from the <code>redux</code> dependency and nothing for extra argument. Type alias will help us declutter action functions.</p>
+</li>
 </ol>
-
 <p>Next is <code>actions.ts</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ThunkDispatch</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
 
 <span class="kr">export</span> <span class="kr">const</span> <span class="nx">getTime</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">({</span>
-  <span class="nx">type</span>: <span class="kt">ActionTypes.GetTime</span>
+  <span class="kr">type</span><span class="o">:</span> <span class="nx">ActionTypes</span><span class="p">.</span><span class="nx">GetTime</span>
 <span class="p">});</span>
 
 <span class="kr">export</span> <span class="kr">const</span> <span class="nx">getWeather</span> <span class="o">=</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">(</span><span class="nx">dispatch</span>: <span class="kt">ThunkDispatch</span><span class="p">)</span> <span class="o">=&gt;</span>
@@ -1425,13 +1365,13 @@ $ tsc
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">request</span> <span class="o">=&gt;</span> <span class="nx">request</span><span class="p">.</span><span class="nx">text</span><span class="p">())</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="nx">dispatch</span><span class="p">({</span>
-        <span class="nx">type</span>: <span class="kt">ActionTypes.GetWeather</span><span class="p">,</span>
+        <span class="kr">type</span><span class="o">:</span> <span class="nx">ActionTypes</span><span class="p">.</span><span class="nx">GetWeather</span><span class="p">,</span>
         <span class="nx">weather</span>: <span class="kt">body</span>
       <span class="p">});</span>
     <span class="p">})</span>
     <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="nx">dispatch</span><span class="p">({</span>
-        <span class="nx">type</span>: <span class="kt">ActionTypes.Error</span><span class="p">,</span>
+        <span class="kr">type</span><span class="o">:</span> <span class="nx">ActionTypes</span><span class="p">.</span><span class="nb">Error</span><span class="p">,</span>
         <span class="nx">error</span>: <span class="kt">e.message</span>
       <span class="p">});</span>
     <span class="p">});</span>
@@ -1442,30 +1382,28 @@ $ tsc
     <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">body</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="kr">const</span> <span class="p">[</span><span class="nx">quote</span><span class="p">]</span> <span class="o">=</span> <span class="nx">body</span><span class="p">.</span><span class="nx">contents</span><span class="p">.</span><span class="nx">quotes</span><span class="p">;</span>
       <span class="nx">dispatch</span><span class="p">({</span>
-        <span class="nx">type</span>: <span class="kt">ActionTypes.GetQuote</span><span class="p">,</span>
+        <span class="kr">type</span><span class="o">:</span> <span class="nx">ActionTypes</span><span class="p">.</span><span class="nx">GetQuote</span><span class="p">,</span>
         <span class="nx">quote</span><span class="o">:</span> <span class="p">{</span> <span class="nx">message</span>: <span class="kt">quote.quote</span><span class="p">,</span> <span class="nx">author</span>: <span class="kt">quote.author</span> <span class="p">}</span>
       <span class="p">});</span>
     <span class="p">})</span>
     <span class="p">.</span><span class="nx">then</span><span class="p">(()</span> <span class="o">=&gt;</span> <span class="nx">dispatch</span><span class="p">(</span><span class="nx">getWeather</span><span class="p">()))</span>
     <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="o">=&gt;</span> <span class="p">{</span>
       <span class="nx">dispatch</span><span class="p">({</span>
-        <span class="nx">type</span>: <span class="kt">ActionTypes.Error</span><span class="p">,</span>
+        <span class="kr">type</span><span class="o">:</span> <span class="nx">ActionTypes</span><span class="p">.</span><span class="nb">Error</span><span class="p">,</span>
         <span class="nx">error</span>: <span class="kt">e.message</span>
       <span class="p">});</span>
-    <span class="p">});</span></code></pre></div>
-<p>We have three actions:</p>
-
+    <span class="p">});</span>
+</code></pre></div><p>We have three actions:</p>
 <ol>
 <li><code>getTime()</code>, which is a simple redux action. The thunk middleware is not picky, so it works well with non-thunk actions.</li>
 <li><code>getWeather()</code>, which is a proper thunk (function that accepts dispatch parameter and returns a promise). We try to fetch from <code>http://wttr.in</code> and dispatch the result, or error in case the fetch fails.</li>
 <li><code>getQuote()</code> which is very similar except that it calls <code>getWeather()</code> after it is done. This is allowed and supported  - one can dispatch actions within actions. Our approach here is serial dispatch, but we could also do it in parallel using for example <code>Promise.all()</code> construct. Again, the actual implementation is neatly tucked away in this file, so that the App component doesn&rsquo;t care how it&rsquo;s done. Imagine having many components and many actions. By splitting up the logic this way, you can use and combine actions whichever way you want.</li>
 </ol>
-
 <p>We also have to update our reducer, so let&rsquo;s look at updated <code>store.ts</code>:</p>
-<div class="highlight"><pre class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">applyMiddleware</span><span class="p">,</span> <span class="nx">Reducer</span><span class="p">,</span> <span class="nx">createStore</span><span class="p">,</span> <span class="nx">Store</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
-<span class="kr">import</span> <span class="nx">thunkMiddleware</span> <span class="nx">from</span> <span class="s2">&#34;redux-thunk&#34;</span><span class="p">;</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="kr">import</span> <span class="p">{</span> <span class="nx">applyMiddleware</span><span class="p">,</span> <span class="nx">Reducer</span><span class="p">,</span> <span class="nx">createStore</span><span class="p">,</span> <span class="nx">Store</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;redux&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">thunkMiddleware</span> <span class="kr">from</span> <span class="s2">&#34;redux-thunk&#34;</span><span class="p">;</span>
 
-<span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ApplicationState</span> <span class="p">}</span> <span class="nx">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">ActionTypes</span><span class="p">,</span> <span class="nx">ApplicationState</span> <span class="p">}</span> <span class="kr">from</span> <span class="s2">&#34;./types&#34;</span><span class="p">;</span>
 
 <span class="kr">const</span> <span class="nx">initialState</span>: <span class="kt">ApplicationState</span> <span class="o">=</span> <span class="p">{</span>
   <span class="nx">currentTime</span>: <span class="kt">null</span><span class="p">,</span>
@@ -1474,8 +1412,8 @@ $ tsc
   <span class="nx">error</span>: <span class="kt">null</span>
 <span class="p">};</span>
 
-<span class="kr">const</span> <span class="nx">reducer</span>: <span class="kt">Reducer</span><span class="o">&lt;</span><span class="nx">ApplicationState</span><span class="o">&gt;</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span> <span class="o">=</span> <span class="nx">initialState</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="nx">type</span><span class="p">)</span> <span class="p">{</span>
+<span class="kr">const</span> <span class="nx">reducer</span>: <span class="kt">Reducer</span><span class="p">&lt;</span><span class="nt">ApplicationState</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">(</span><span class="nx">state</span> <span class="o">=</span> <span class="nx">initialState</span><span class="p">,</span> <span class="nx">action</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="k">switch</span> <span class="p">(</span><span class="nx">action</span><span class="p">.</span><span class="kr">type</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">case</span> <span class="nx">ActionTypes.GetTime</span>:
       <span class="kt">return</span> <span class="p">{</span>
         <span class="p">...</span><span class="nx">state</span><span class="p">,</span>
@@ -1505,16 +1443,15 @@ $ tsc
   <span class="p">}</span>
 <span class="p">};</span>
 
-<span class="kr">export</span> <span class="k">default</span> <span class="p">()</span><span class="o">:</span> <span class="nx">Store</span><span class="o">&lt;</span><span class="nx">ApplicationState</span><span class="o">&gt;</span> <span class="o">=&gt;</span>
-  <span class="nx">createStore</span><span class="p">(</span><span class="nx">reducer</span><span class="p">,</span> <span class="nx">applyMiddleware</span><span class="p">(</span><span class="nx">thunkMiddleware</span><span class="p">));</span></code></pre></div>
-<p>Reducer is nothing fancy, we&rsquo;ve just added handling of two new action types as well as error action type. We&rsquo;ve also updated the <code>createStore()</code> call to apply the thunk middleware.</p>
-
+<span class="kr">export</span> <span class="k">default</span> <span class="p">()</span><span class="o">:</span> <span class="nx">Store</span><span class="p">&lt;</span><span class="nt">ApplicationState</span><span class="p">&gt;</span> <span class="o">=&gt;</span>
+  <span class="nx">createStore</span><span class="p">(</span><span class="nx">reducer</span><span class="p">,</span> <span class="nx">applyMiddleware</span><span class="p">(</span><span class="nx">thunkMiddleware</span><span class="p">));</span>
+</code></pre></div><p>Reducer is nothing fancy, we&rsquo;ve just added handling of two new action types as well as error action type. We&rsquo;ve also updated the <code>createStore()</code> call to apply the thunk middleware.</p>
 <p>Last step is to update the App component:</p>
-<div class="highlight"><pre class="chroma"><code class="language-jsx" data-lang="jsx"><span class="k">import</span> <span class="o">*</span> <span class="nx">as</span> <span class="nx">actions</span> <span class="nx">from</span> <span class="s2">&#34;./actions&#34;</span><span class="p">;</span>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsx" data-lang="jsx"><span class="kr">import</span> <span class="o">*</span> <span class="nx">as</span> <span class="nx">actions</span> <span class="nx">from</span> <span class="s2">&#34;./actions&#34;</span><span class="p">;</span>
 
-<span class="k">class</span> <span class="nx">App</span> <span class="k">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
+<span class="kr">class</span> <span class="nx">App</span> <span class="kr">extends</span> <span class="nx">Component</span><span class="p">&lt;</span><span class="nt">Props</span><span class="p">&gt;</span> <span class="p">{</span>
   <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">const</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="p">{</span>
       <span class="nx">currentTime</span><span class="p">,</span>
       <span class="nx">dailyQuote</span><span class="p">,</span>
       <span class="nx">weather</span><span class="p">,</span>
@@ -1524,29 +1461,29 @@ $ tsc
     <span class="p">}</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">props</span><span class="p">;</span>
 
     <span class="k">return</span> <span class="p">(</span>
-      <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.container}</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;</span><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">React</span> <span class="nx">Native</span><span class="o">!</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.instructions}</span><span class="p">&gt;</span><span class="nx">To</span> <span class="nx">get</span> <span class="nx">started</span><span class="p">,</span> <span class="nx">edit</span> <span class="nx">App</span><span class="p">.</span><span class="nx">tsx</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.instructions}</span><span class="p">&gt;{</span><span class="nx">instructions</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
-        <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.buttons}</span><span class="p">&gt;</span>
-          <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.button}</span> <span class="na">onPress</span><span class="o">=</span><span class="s">{getTime}</span><span class="p">&gt;</span>
-            <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.buttonText}</span><span class="p">&gt;</span><span class="nx">Get</span> <span class="nx">time</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+      <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">container</span><span class="p">}&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;</span><span class="nx">Welcome</span> <span class="nx">to</span> <span class="nx">React</span> <span class="nx">Native</span><span class="o">!</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">instructions</span><span class="p">}&gt;</span><span class="nx">To</span> <span class="nx">get</span> <span class="nx">started</span><span class="p">,</span> <span class="nx">edit</span> <span class="nx">App</span><span class="p">.</span><span class="nx">tsx</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">instructions</span><span class="p">}&gt;{</span><span class="nx">instructions</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+        <span class="p">&lt;</span><span class="nt">View</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">buttons</span><span class="p">}&gt;</span>
+          <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">button</span><span class="p">}</span> <span class="na">onPress</span><span class="o">=</span><span class="p">{</span><span class="nx">getTime</span><span class="p">}&gt;</span>
+            <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">buttonText</span><span class="p">}&gt;</span><span class="nx">Get</span> <span class="nx">time</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
           <span class="p">&lt;/</span><span class="nt">TouchableOpacity</span><span class="p">&gt;</span>
-          <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.button}</span> <span class="na">onPress</span><span class="o">=</span><span class="s">{getQuote}</span><span class="p">&gt;</span>
-            <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.buttonText}</span><span class="p">&gt;</span><span class="nx">Get</span> <span class="nx">quote</span> <span class="nx">and</span> <span class="nx">weather</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+          <span class="p">&lt;</span><span class="nt">TouchableOpacity</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">button</span><span class="p">}</span> <span class="na">onPress</span><span class="o">=</span><span class="p">{</span><span class="nx">getQuote</span><span class="p">}&gt;</span>
+            <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">buttonText</span><span class="p">}&gt;</span><span class="nx">Get</span> <span class="nx">quote</span> <span class="nx">and</span> <span class="nx">weather</span><span class="p">&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
           <span class="p">&lt;/</span><span class="nt">TouchableOpacity</span><span class="p">&gt;</span>
         <span class="p">&lt;/</span><span class="nt">View</span><span class="p">&gt;</span>
-        <span class="p">{</span><span class="nx">error</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.error}</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
+        <span class="p">{</span><span class="nx">error</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">error</span><span class="p">}&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
         <span class="p">{</span><span class="nx">currentTime</span> <span class="o">&amp;&amp;</span> <span class="p">(</span>
-          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;{</span><span class="nx">currentTime</span><span class="p">.</span><span class="nx">toTimeString</span><span class="p">()}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
+          <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;{</span><span class="nx">currentTime</span><span class="p">.</span><span class="nx">toTimeString</span><span class="p">()}&lt;/</span><span class="nt">Text</span><span class="p">&gt;</span>
         <span class="p">)}</span>
-        <span class="p">{</span><span class="nx">dailyQuote</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;{</span><span class="nx">dailyQuote</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
-        <span class="p">{</span><span class="nx">weather</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="s">{styles.welcome}</span><span class="p">&gt;{</span><span class="nx">weather</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
+        <span class="p">{</span><span class="nx">dailyQuote</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;{</span><span class="nx">dailyQuote</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
+        <span class="p">{</span><span class="nx">weather</span> <span class="o">&amp;&amp;</span> <span class="p">&lt;</span><span class="nt">Text</span> <span class="na">style</span><span class="o">=</span><span class="p">{</span><span class="nx">styles</span><span class="p">.</span><span class="nx">welcome</span><span class="p">}&gt;{</span><span class="nx">weather</span><span class="p">}&lt;/</span><span class="nt">Text</span><span class="p">&gt;}</span>
       <span class="p">&lt;/</span><span class="nt">View</span><span class="p">&gt;</span>
     <span class="p">);</span>
   <span class="p">}</span>
 <span class="p">}</span>
-<span class="k">const</span> <span class="nx">ConnectedApp</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
+<span class="kr">const</span> <span class="nx">ConnectedApp</span> <span class="o">=</span> <span class="nx">connect</span><span class="p">(</span>
   <span class="p">(</span><span class="nx">state</span><span class="o">:</span> <span class="nx">ApplicationState</span><span class="p">)</span><span class="o">:</span> <span class="nx">StateProps</span> <span class="p">=&gt;</span> <span class="p">({</span>
     <span class="nx">currentTime</span><span class="o">:</span> <span class="nx">state</span><span class="p">.</span><span class="nx">currentTime</span><span class="p">,</span>
     <span class="nx">dailyQuote</span><span class="o">:</span> <span class="nx">state</span><span class="p">.</span><span class="nx">dailyQuote</span><span class="p">,</span>
@@ -1557,16 +1494,12 @@ $ tsc
     <span class="nx">getTime</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">getTime</span><span class="p">,</span>
     <span class="nx">getQuote</span><span class="o">:</span> <span class="nx">actions</span><span class="p">.</span><span class="nx">getQuote</span>
   <span class="p">}</span>
-<span class="p">)(</span><span class="nx">App</span><span class="p">);</span></code></pre></div>
-<p>We&rsquo;ve added the button as well as rendering of the quote and the weather. The interesting bit is in the <code>connect()</code> function. Note how the component doesn&rsquo;t care anymore about specific action types. Even more: because our actions are functions that accept <code>dispatch</code> parameter (and we&rsquo;re using thunk middleware), we can just pass them to <code>connect()</code> as object literal.</p>
-
+<span class="p">)(</span><span class="nx">App</span><span class="p">);</span>
+</code></pre></div><p>We&rsquo;ve added the button as well as rendering of the quote and the weather. The interesting bit is in the <code>connect()</code> function. Note how the component doesn&rsquo;t care anymore about specific action types. Even more: because our actions are functions that accept <code>dispatch</code> parameter (and we&rsquo;re using thunk middleware), we can just pass them to <code>connect()</code> as object literal.</p>
 <h2 id="final-result">Final result</h2>
-
 <p>Whew, that was some work. Here&rsquo;s the final result when clicking on the &lsquo;Get quote and weather&rsquo; button (this time using iOS simulator):</p>
-
-<p><a href="/posts/typescript-react-native/3.png"><img src="/posts/typescript-react-native/3.small.png" alt="React Native Hello World" /></a></p>
-
-<p>To finish it off, here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux" target="_blank">Github repo</a> of this project. Happy hacking!</p>
+<p><a href="/posts/typescript-react-native/3.png"><img src="/posts/typescript-react-native/3.small.png" alt="React Native Hello World"></a></p>
+<p>To finish it off, here&rsquo;s the <a href="https://github.com/jangnezda/ReactNativeRedux">Github repo</a> of this project. Happy hacking!</p>
 ]]></content>
 		</item>
 		

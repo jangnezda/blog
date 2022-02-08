@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on rebased</title>
@@ -6,13 +6,27 @@
     <description>Recent content in Tags on rebased</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 08 Aug 2019 18:53:37 +0200</lastBuildDate>
-    
-	<atom:link href="https://blog.rebased.dev/tags/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Sun, 21 Nov 2021 08:11:06 +0100</lastBuildDate><atom:link href="https://blog.rebased.dev/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>electron</title>
+      <link>https://blog.rebased.dev/tags/electron/</link>
+      <pubDate>Sun, 21 Nov 2021 08:11:06 +0100</pubDate>
+      
+      <guid>https://blog.rebased.dev/tags/electron/</guid>
+      <description></description>
+    </item>
     
     <item>
-      <title>Elixir</title>
+      <title>macos</title>
+      <link>https://blog.rebased.dev/tags/macos/</link>
+      <pubDate>Sun, 21 Nov 2021 08:11:06 +0100</pubDate>
+      
+      <guid>https://blog.rebased.dev/tags/macos/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>elixir</title>
       <link>https://blog.rebased.dev/tags/elixir/</link>
       <pubDate>Thu, 08 Aug 2019 18:53:37 +0200</pubDate>
       
@@ -21,25 +35,7 @@
     </item>
     
     <item>
-      <title>Groovy</title>
-      <link>https://blog.rebased.dev/tags/groovy/</link>
-      <pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
-      
-      <guid>https://blog.rebased.dev/tags/groovy/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Jenkins</title>
-      <link>https://blog.rebased.dev/tags/jenkins/</link>
-      <pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
-      
-      <guid>https://blog.rebased.dev/tags/jenkins/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Phoenix</title>
+      <title>phoenix</title>
       <link>https://blog.rebased.dev/tags/phoenix/</link>
       <pubDate>Thu, 08 Aug 2019 18:53:37 +0200</pubDate>
       
@@ -48,7 +44,25 @@
     </item>
     
     <item>
-      <title>React</title>
+      <title>groovy</title>
+      <link>https://blog.rebased.dev/tags/groovy/</link>
+      <pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
+      
+      <guid>https://blog.rebased.dev/tags/groovy/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>jenkins</title>
+      <link>https://blog.rebased.dev/tags/jenkins/</link>
+      <pubDate>Sat, 15 Jun 2019 19:57:50 +0200</pubDate>
+      
+      <guid>https://blog.rebased.dev/tags/jenkins/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>react</title>
       <link>https://blog.rebased.dev/tags/react/</link>
       <pubDate>Tue, 12 Mar 2019 22:21:59 +0100</pubDate>
       
@@ -57,16 +71,7 @@
     </item>
     
     <item>
-      <title>React Native</title>
-      <link>https://blog.rebased.dev/tags/react-native/</link>
-      <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
-      
-      <guid>https://blog.rebased.dev/tags/react-native/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Redux</title>
+      <title>redux</title>
       <link>https://blog.rebased.dev/tags/redux/</link>
       <pubDate>Tue, 12 Mar 2019 22:21:59 +0100</pubDate>
       
@@ -75,20 +80,20 @@
     </item>
     
     <item>
-      <title>Thunks</title>
-      <link>https://blog.rebased.dev/tags/thunks/</link>
+      <title>react native</title>
+      <link>https://blog.rebased.dev/tags/react-native/</link>
       <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
       
-      <guid>https://blog.rebased.dev/tags/thunks/</guid>
+      <guid>https://blog.rebased.dev/tags/react-native/</guid>
       <description></description>
     </item>
     
     <item>
-      <title>Typescript</title>
-      <link>https://blog.rebased.dev/tags/typescript/</link>
+      <title>thunks</title>
+      <link>https://blog.rebased.dev/tags/thunks/</link>
       <pubDate>Tue, 22 Jan 2019 21:26:10 +0100</pubDate>
       
-      <guid>https://blog.rebased.dev/tags/typescript/</guid>
+      <guid>https://blog.rebased.dev/tags/thunks/</guid>
       <description></description>
     </item>
     

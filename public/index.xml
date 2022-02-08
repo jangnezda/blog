@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>rebased</title>
@@ -6,10 +6,16 @@
     <description>Recent content on rebased</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Thu, 08 Aug 2019 18:53:37 +0200</lastBuildDate>
-    
-	<atom:link href="https://blog.rebased.dev/index.xml" rel="self" type="application/rss+xml" />
-    
+    <lastBuildDate>Sun, 21 Nov 2021 08:11:06 +0100</lastBuildDate><atom:link href="https://blog.rebased.dev/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Electron uninstaller for macOS</title>
+      <link>https://blog.rebased.dev/posts/electron-macos-uninstall/</link>
+      <pubDate>Sun, 21 Nov 2021 08:11:06 +0100</pubDate>
+      
+      <guid>https://blog.rebased.dev/posts/electron-macos-uninstall/</guid>
+      <description>Recently I was working on an Electron app that needed to work with system audio and for MacOS the authors have opted to use BlackHole audio driver. The app was already in development for some time and already used in production. But there was a problem: when user deleted the app, the audio driver wasn&amp;rsquo;t deleted from the system.
+The problem is that during installation the app installed audio driver files into /Library/Audio/Plug-Ins/HAL.</description>
+    </item>
     
     <item>
       <title>Upgrading Phoenix projects to latest Elixir</title>
@@ -18,7 +24,8 @@
       
       <guid>https://blog.rebased.dev/posts/upgrade-elixir-1.9/</guid>
       <description>Elixir 1.9 has been released about a month ago. This release is important, because of two things:
- It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery. According to authors, there are no plans for new features to the language:
+  It adds releases functionality to the core. This means that Elixir projects no longer need to depend on Distillery.
+  According to authors, there are no plans for new features to the language:
  As mentioned earlier, releases was the last planned feature for Elixir. We don’t have any major user-facing feature in the works nor planned.</description>
     </item>
     
@@ -58,7 +65,7 @@ The Phoenix framework is one of the most popular web frameworks in Elixir commun
       
       <guid>https://blog.rebased.dev/posts/react-preload-data/</guid>
       <description>For every non-trivial web application there is a need to preload some data before rendering the content. For example, to display a list of users we need to fetch it first from the server. React web applications are no exception, so let&amp;rsquo;s take a look how we can preload some data in React components.
-React documentation I always check the documentation first when exploring how to do something with React.</description>
+React documentation I always check the documentation first when exploring how to do something with React. There are hints and recommendations on how to do (or not do) things in React applications.</description>
     </item>
     
     <item>
